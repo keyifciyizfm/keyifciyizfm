@@ -1,7 +1,7 @@
 {
-  "name": "keyifciyizfm-pro",
+  "name": "keyifciyiz-fm",
   "version": "1.0.0",
-  "description": "Flatcast Style Radio",
+  "description": "Radyo ve Chat Sistemi",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
