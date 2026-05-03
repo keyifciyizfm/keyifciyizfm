@@ -2,106 +2,125 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Flatcast Style</title>
+    <title>Keyifciyiz FM - Giriş Paneli</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        body { background: #1a1a1a; color: #ccc; font-family: Tahoma; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-        /* Giriş Ekranı */
-        #login-screen { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; align-items: center; justify-content: center; }
-        .login-box { border: 1px solid #444; padding: 20px; background: #222; text-align: center; }
-        /* Üst Araç Çubuğu (image_11'e göre) */
+        * { box-sizing: border-box; }
+        body { background: #1a1a1a; color: #ccc; font-family: Tahoma; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* GİRİŞ EKRANI (ÜYE OLMAYAN GİREMEZ) */
+        #login-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: #222; border: 2px solid #444; padding: 40px; text-align: center; width: 350px; }
+        .login-card input { width: 100%; padding: 12px; margin-bottom: 10px; background: #000; border: 1px solid #555; color: #fff; }
+        .login-card button { width: 100%; padding: 12px; background: #ff9900; border: none; font-weight: bold; cursor: pointer; color: #000; }
+
+        /* ARAÇLAR: YAN YANA DÜZEN */
         .toolbar { display: flex; gap: 5px; padding: 10px; background: #333; align-items: center; border-bottom: 1px solid #444; }
-        .btn { background: #eee; border: 1px solid #999; padding: 2px 8px; cursor: pointer; color: #000; font-size: 12px; font-weight: bold; }
-        .btn:active { background: #ccc; }
-        /* Chat Alanı */
-        .main { display: flex; flex: 1; overflow: hidden; }
-        #chat-window { flex: 3; background: #000; padding: 10px; overflow-y: auto; border-right: 1px solid #333; }
-        .user-list { width: 200px; background: #111; padding: 10px; font-size: 12px; }
-        /* Yazı Yazma Alanı */
-        .input-area { padding: 10px; background: #222; display: flex; gap: 5px; }
-        #msg-input { flex: 1; padding: 10px; background: #000; color: #fff; border: 1px solid #444; }
-        #visualizer { width: 100%; height: 40px; background: #000; margin-bottom: 5px; }
+        .tool-btn { background: #eee; border: 1px solid #999; padding: 3px 10px; cursor: pointer; color: #000; font-size: 13px; font-weight: bold; }
+        .tool-btn:active { background: #ccc; }
+
+        /* ANA ALAN */
+        .content { display: flex; flex: 1; overflow: hidden; }
+        #chat-log { flex: 3; background: #000; padding: 15px; overflow-y: auto; }
+        .user-sidebar { width: 220px; background: #111; border-left: 1px solid #333; padding: 10px; }
+        
+        .input-box { background: #222; padding: 15px; display: flex; gap: 10px; }
+        #text-in { flex: 1; padding: 10px; background: #000; color: #fff; border: 1px solid #444; outline: none; }
+        #visual-bar { width: 100%; height: 30px; background: #000; margin-bottom: 5px; border: 1px solid #333; }
     </style>
 </head>
 <body>
 
-<div id="login-screen">
-    <div class="login-box">
-        <h3 style="color:#fff">GİRİŞ PANELİ</h3>
-        <input type="text" id="nick" placeholder="Nickiniz..." style="width:100%; margin-bottom:10px; padding:8px;">
-        <input type="password" id="pass" placeholder="Şifre (DJ)" style="width:100%; margin-bottom:10px; padding:8px;">
-        <button onclick="baglan()" style="width:100%; padding:10px; cursor:pointer;">GİRİŞ</button>
+<div id="login-overlay">
+    <div class="login-card">
+        <h2 style="color:#ff9900; margin-top:0;">ÜYE GİRİŞİ</h2>
+        <input type="text" id="u-name" placeholder="Üye Adınız (Nick)...">
+        <input type="password" id="u-pass" placeholder="Şifre (Sadece Adminler İçin)">
+        <button onclick="girisYap()">RADYOYA BAĞLAN</button>
+        <p style="font-size:10px; color:#666; margin-top:10px;">Giriş yaparak radyo kurallarını kabul etmiş sayılırsınız.</p>
     </div>
 </div>
 
-<div class="header" style="padding:5px; background:#111;">
-    <canvas id="visualizer"></canvas>
+<div class="header" style="background:#111; padding:5px;">
+    <canvas id="visual-bar"></canvas>
     <div class="toolbar">
-        <button class="btn" onclick="size('up')">A+</button>
-        <button class="btn" onclick="size('down')">A-</button>
-        <button class="btn" onclick="addEmoji('😊')">😊</button>
-        <button class="btn" id="b-btn" onclick="toggle('bold')">B</button>
-        <button class="btn" id="i-btn" onclick="toggle('italic')">I</button>
-        <button class="btn" id="u-btn" onclick="toggle('underline')">U</button>
-        <input type="color" id="clr" value="#ff0000" onchange="st.color=this.value" style="width:40px; height:24px; border:none; padding:0;">
-        <button class="btn">Sound</button>
-        <button class="btn" id="mixer-btn" style="display:none; background:#ff9900;" onclick="alert('Mixer Açıldı')">Login</button>
+        <button class="tool-btn" onclick="size('up')">A+</button>
+        <button class="tool-btn" onclick="size('down')">A-</button>
+        <button class="tool-btn" onclick="addEmot('😊')">😊</button>
+        <button class="tool-btn" onclick="tog('bold')">B</button>
+        <button class="tool-btn" onclick="tog('italic')">I</button>
+        <button class="tool-btn" onclick="tog('underline')">U</button>
+        <input type="color" id="c-picker" value="#ffffff" onchange="styleSet.color=this.value" style="width:40px; height:25px; border:none; background:none; cursor:pointer;">
+        <button class="tool-btn" onclick="alert('Ses Ayarları')">Sound</button>
+        <button class="tool-btn" id="adm-btn" style="display:none; background:#ff9900; color:#000;" onclick="alert('Mixer Açılıyor...')">Login (Mixer)</button>
     </div>
 </div>
 
-<div class="main">
-    <div id="chat-window"></div>
-    <div class="user-list" id="users"></div>
+<div class="content">
+    <div id="chat-log"></div>
+    <div class="user-sidebar" id="u-list">
+        <div style="color:#ff9900; font-size:11px; border-bottom:1px solid #333; padding-bottom:5px;">AKTİF ÜYELER</div>
+    </div>
 </div>
 
-<div class="input-area">
-    <input type="text" id="msg-input" placeholder="Mesaj yaz kutusu..." onkeypress="if(event.key==='Enter') gonder()">
-    <button onclick="gonder()" class="btn" style="padding:10px 20px;">GÖNDER</button>
+<div class="input-box">
+    <input type="text" id="text-in" placeholder="Mesajınızı buraya yazın..." onkeypress="if(event.key==='Enter') gonder()">
+    <button onclick="gonder()" class="tool-btn" style="padding:10px 25px; background:#ff9900; border:none;">GÖNDER</button>
 </div>
 
-<audio id="radyo" crossorigin="anonymous"></audio>
+<audio id="player" crossorigin="anonymous"></audio>
 
 <script>
     const socket = io();
-    let st = { bold: false, italic: false, underline: false, color: '#ff0000', size: 14 };
+    let styleSet = { bold: false, italic: false, underline: false, color: '#ffffff', size: 14 };
+    let myRole = "USER";
 
-    function baglan() {
-        const n = document.getElementById('nick').value;
-        const p = document.getElementById('pass').value;
-        if(n) socket.emit('join', { username: n, password: p });
+    function girisYap() {
+        const nick = document.getElementById('u-name').value;
+        const pass = document.getElementById('u-pass').value;
+        if(!nick) return alert("Lütfen bir üye adı girin!");
+        socket.emit('join', { username: nick, password: pass });
     }
 
     socket.on('authStatus', d => {
-        document.getElementById('login-screen').style.display = 'none';
-        if(d.role === "ADMIN") document.getElementById('mixer-btn').style.display = 'block';
+        myRole = d.role;
+        document.getElementById('login-overlay').style.display = 'none';
+        if(myRole === "ADMIN") document.getElementById('adm-btn').style.display = 'block';
     });
 
-    function toggle(t) { 
-        st[t] = !st[t]; 
-        document.getElementById(t[0]+'-btn').style.background = st[t] ? '#aaa' : '#eee';
-    }
-    
-    function size(d) { st.size = (d === 'up') ? st.size + 2 : st.size - 2; }
-    function addEmoji(e) { document.getElementById('msg-input').value += e; }
+    function tog(t) { styleSet[t] = !styleSet[t]; }
+    function size(d) { styleSet.size = (d === 'up') ? styleSet.size + 2 : styleSet.size - 2; }
+    function addEmot(e) { document.getElementById('text-in').value += e; }
 
     function gonder() {
-        const inp = document.getElementById('msg-input');
-        if(inp.value) {
-            socket.emit('sendMessage', { text: inp.value, format: st });
-            inp.value = '';
+        const input = document.getElementById('text-in');
+        if(input.value) {
+            socket.emit('sendMessage', { text: input.value, format: styleSet });
+            input.value = '';
         }
     }
 
     socket.on('message', d => {
-        const cw = document.getElementById('chat-window');
+        const chat = document.getElementById('chat-log');
         const s = `color:${d.format.color}; font-weight:${d.format.bold?'bold':'normal'}; font-style:${d.format.italic?'italic':'normal'}; text-decoration:${d.format.underline?'underline':'none'}; font-size:${d.format.size}px;`;
-        cw.innerHTML += `<div><b>${d.user}:</b> <span style="${s}">${d.text}</span></div>`;
-        cw.scrollTop = cw.scrollHeight;
+        chat.innerHTML += `<div style="margin-bottom:8px;"><b style="color:#ff9900">${d.user}:</b> <span style="${s}">${d.text}</span></div>`;
+        chat.scrollTop = chat.scrollHeight;
     });
 
-    socket.on('updateUserList', u => {
-        document.getElementById('users').innerHTML = u.map(x => `<div>● ${x.username}</div>`).join('');
+    socket.on('updateUserList', users => {
+        const list = document.getElementById('u-list');
+        list.innerHTML = '<div style="color:#ff9900; font-size:11px; border-bottom:1px solid #333; padding-bottom:5px;">AKTİF ÜYELER</div>';
+        users.forEach(u => {
+            let item = `<div style="padding:5px 0; font-size:13px;">● ${u.title} ${u.username}`;
+            if(myRole === "ADMIN" && u.role !== "ADMIN") {
+                item += ` <span style="font-size:10px; color:red; cursor:pointer;" onclick="kick('${u.id}')">[At]</span>`;
+            }
+            list.innerHTML += item + `</div>`;
+        });
     });
+
+    function kick(id) { socket.emit('adminAction', { action: 'kick', targetId: id }); }
+    socket.on('kicked', () => { alert("Sistemden atıldınız."); window.location.reload(); });
 </script>
 </body>
 </html>
