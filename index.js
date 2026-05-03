@@ -47,11 +47,15 @@ io.on('connection', (socket) => {
         } else if (data.action === 'make_dj') {
             activeUsers[targetId].role = 'DJ';
             activeUsers[targetId].color = '#f1c40f';
+            const targetSocket = io.sockets.sockets.get(targetId);
+            if(targetSocket) targetSocket.role = 'DJ'; 
             io.emit('user list', Object.values(activeUsers));
         } else if (data.action === 'make_admin') {
             if (socket.role !== 'Yönetici') return;
             activeUsers[targetId].role = 'Admin';
             activeUsers[targetId].color = '#e67e22';
+            const targetSocket = io.sockets.sockets.get(targetId);
+            if(targetSocket) targetSocket.role = 'Admin';
             io.emit('user list', Object.values(activeUsers));
         }
     });
