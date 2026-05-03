@@ -19,7 +19,7 @@ let bannedUsers = []; // Banlananları burada tutuyoruz
 
 // --- YETKİ TANIMLAMALARI ---
 const roles = {
-    'Keyifciyiz_Fm': 'Admin', // Keyifciyiz_Fm
+    'Halil': 'Yönetici', // Buraya kendi nickini yaz
     'DJ_Aysima': 'DJ',
     'Mod_Rehber': 'Sorumlu'
 };
