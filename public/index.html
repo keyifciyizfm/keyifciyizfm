@@ -3,52 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <title>Sohbet - Flatcast Style</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
         
-        /* Nick Giriş Ekranı */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        #login-box { background: #333; padding: 20px; border: 2px solid #00ff00; text-align: center; border-radius: 10px; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 4px; box-shadow: 0 0 20px #000; }
         
-        #chat-container { width: 950px; height: 600px; background: #333; border: 2px solid #444; display: flex; flex-direction: column; }
-        #top-gradient { height: 12px; width: 100%; background: linear-gradient(to right, #00ff00, #ffff00, #ff0000); }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; box-shadow: 0 0 30px #000; border-radius: 5px; overflow: hidden; }
         
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 5px; gap: 5px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 10px; overflow-y: auto; font-size: 13px; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 10px; font-size: 12px; overflow-y: auto; }
+        #top-gradient { height: 14px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); border-bottom: 1px solid #000; }
         
-        .msg-line { margin-bottom: 5px; border-bottom: 1px solid #111; }
-        .nick { color: #00ff00; font-weight: bold; }
-        .sys-msg { color: #888; font-style: italic; font-size: 11px; }
-        .user-item { color: #5bc0de; padding: 2px 0; border-bottom: 1px solid #222; }
+        /* Gelişmiş Action Bar ve İkonlar */
+        #action-bar { background: #4a4a4a; padding: 8px; display: flex; gap: 8px; border-bottom: 2px solid #222; align-items: center; }
+        .f-btn { 
+            background: linear-gradient(to bottom, #777, #333); 
+            border: 1px solid #111; 
+            color: #fff; 
+            padding: 5px 14px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            border-radius: 3px; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .f-btn i { font-size: 14px; } /* İkon boyutu */
+        .f-btn:hover { background: #555; }
+        .f-btn:active { background: #222; box-shadow: inset 0 2px 5px #000; }
+        
+        .btn-blue i { color: #5bc0de; }
+        .btn-yellow i { color: #f1c40f; }
+        .btn-red i { color: #e74c3c; }
 
-        input { background: #000; border: 1px solid #555; color: #fff; padding: 8px; }
-        button { background: linear-gradient(to bottom, #666, #333); color: #fff; padding: 5px 15px; cursor: pointer; border: 1px solid #000; }
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; border-radius: 3px; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; border-radius: 3px; }
+        
+        .msg-line { margin-bottom: 6px; border-bottom: 1px solid #1a1a1a; padding-bottom: 3px; line-height: 1.4; }
+        .nick { font-weight: bold; color: #2ecc71; margin-right: 5px; }
+        .user-item { color: #5bc0de; padding: 4px 0; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 5px; }
+        
+        #input-area { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
+        #input-area input { flex: 1; background: #000; border: 1px solid #555; color: #fff; padding: 10px; border-radius: 3px; outline: none; }
+        #input-area input:focus { border-color: #2ecc71; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div id="login-box">
-        <h3>Hoşgeldiniz</h3><br>
-        <input type="text" id="nick-input" placeholder="Nickinizi yazın..." maxlength="15"><br><br>
-        <button onclick="joinChat()">Sohbete Başla</button>
+        <i class="fa-solid fa-tower-broadcast" style="font-size: 40px; color: #2ecc71; margin-bottom: 15px;"></i>
+        <h3 style="color:#fff">Radyo Panel Girişi</h3><br>
+        <input type="text" id="nick-input" placeholder="Kullanıcı Adınız..." maxlength="15" style="background:#000; color:#fff; border:1px solid #555; padding:10px; margin-bottom:15px; text-align:center; display:block; width:220px;"><br>
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
     </div>
 </div>
 
 <div id="chat-container">
     <div id="top-gradient"></div>
+    
+    <div id="action-bar">
+        <button class="f-btn"><i class="fa-solid fa-comments"></i> Chat</button>
+        <button class="f-btn"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+        <button class="f-btn"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <div style="flex:1"></div>
+        <button class="f-btn btn-yellow"><i class="fa-solid fa-palette"></i> Color</button>
+        <button class="f-btn"><i class="fa-solid fa-volume-high"></i> Sound</button>
+        <button class="f-btn btn-blue"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+    </div>
+
     <div id="main-area">
         <div id="messages"></div>
         <div id="user-list">
-            <b style="color:#f0ad4e">Online Dinleyiciler</b><hr style="border:0; border-top:1px solid #444; margin:5px 0;">
+            <b style="color:#f1c40f"><i class="fa-solid fa-users"></i> Dinleyiciler</b>
+            <hr style="border:0; border-top:1px solid #444; margin:10px 0;">
             <div id="users"></div>
         </div>
     </div>
-    <form id="form" style="display:flex; padding:10px; background:#333;">
-        <input id="input" style="flex:1" autocomplete="off" placeholder="Mesaj gönder..." />
-        <button type="submit">GÖNDER</button>
+
+    <form id="form" id="input-area" style="display:flex; padding:12px; background:#3b3b3b; gap:8px;">
+        <input id="input" autocomplete="off" placeholder="Mesajınızı buraya bırakın..." />
+        <button type="submit" class="f-btn" style="padding: 0 25px;">GÖNDER <i class="fa-solid fa-paper-plane"></i></button>
     </form>
 </div>
 
@@ -77,9 +115,9 @@
         var div = document.createElement('div');
         div.className = 'msg-line';
         if(data.system) {
-            div.innerHTML = `<span class="sys-msg">${data.text}</span>`;
+            div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
         } else {
-            div.innerHTML = `<span class="nick">${data.user}:</span> ${data.text}`;
+            div.innerHTML = `<span class="nick">${data.user}:</span> <span style="color:#eee">${data.text}</span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
@@ -91,7 +129,7 @@
         userNames.forEach(function(u) {
             var item = document.createElement('div');
             item.className = 'user-item';
-            item.innerHTML = '• ' + u;
+            item.innerHTML = '<i class="fa-solid fa-user" style="font-size:10px;"></i> ' + u;
             userDiv.appendChild(item);
         });
     });
