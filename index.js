@@ -17,25 +17,22 @@ let registeredUsers = JSON.parse(fs.readFileSync(dbFile));
 let activeUsers = {}; 
 let bannedUsers = []; 
 
-// YETKİ AYARLARI
-const adminNick = "Halil"; // Kendi adını buraya yaz
-const adminPass = "123456"; // Kendi şifreni buraya yaz
+const adminNick = "Halil"; 
+const adminPass = "123456"; 
 
 io.on('connection', (socket) => {
-    
     socket.on('register', (data) => {
         if (registeredUsers[data.nick] || data.nick === adminNick) {
             socket.emit('auth error', 'Bu isim kullanılamaz!');
         } else {
             registeredUsers[data.nick] = { password: data.password };
             fs.writeFileSync(dbFile, JSON.stringify(registeredUsers));
-            socket.emit('auth success', 'Kayıt başarılı! Giriş yapın.');
+            socket.emit('auth success', 'Kayıt başarılı! Giriş yapabilirsiniz.');
         }
     });
 
     socket.on('login', (data) => {
         if (bannedUsers.includes(data.nick)) return socket.emit('auth error', 'Engellendiniz!');
-
         let isAdmin = (data.nick === adminNick && data.password === adminPass);
         let user = registeredUsers[data.nick];
 
@@ -43,10 +40,8 @@ io.on('connection', (socket) => {
             socket.nick = data.nick;
             socket.role = isAdmin ? 'Yönetici' : 'Dinleyici';
             socket.color = isAdmin ? '#ff4757' : '#2ecc71';
-            
             activeUsers[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color };
-            
-            socket.emit('login success', { role: socket.role });
+            socket.emit('login success', { role: socket.role, nick: socket.nick });
             io.emit('user list', Object.values(activeUsers));
             io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} odaya girdi.`, system: true });
         } else {
@@ -59,11 +54,11 @@ io.on('connection', (socket) => {
         const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
         if (targetId) {
             if (data.action === 'kick') {
-                io.to(targetId).emit('force logout', 'Atıldınız!');
+                io.to(targetId).emit('force logout', 'Yönetici tarafından atıldınız!');
                 io.sockets.sockets.get(targetId).disconnect();
             } else if (data.action === 'ban') {
                 bannedUsers.push(data.targetNick);
-                io.to(targetId).emit('force logout', 'Banlandınız!');
+                io.to(targetId).emit('force logout', 'Süresiz banlandınız!');
                 io.sockets.sockets.get(targetId).disconnect();
             }
         }
