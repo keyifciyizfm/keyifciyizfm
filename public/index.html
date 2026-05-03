@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Sohbet - Flatcast Style Pro</title>
     <style>
+        /* SENİN ORİJİNAL TASARIMIN */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
@@ -23,7 +24,7 @@
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; }
 
-        /* MİXER STİLLERİ - SADECE DJ GÖRÜR */
+        /* MİXER PANELİ */
         #dj-mixer { 
             display: none; position: absolute; top: 20px; right: 20px; width: 260px; 
             background: #2c3e50; border: 2px solid #f1c40f; border-radius: 6px; 
@@ -32,15 +33,15 @@
         .mixer-head { background: #f1c40f; color: #000; padding: 5px; font-weight: bold; font-size: 11px; cursor: move; text-align: center; }
         .mixer-body { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
         .m-btn { padding: 6px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; border-radius: 3px; color: white; }
-        .m-start { background: #27ae60; } .m-stop { background: #c0392b; } .m-mic { background: #2980b9; }
+        .m-start { background: #27ae60; } .m-mic { background: #2980b9; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM Giriş</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%;">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Sohbet Girişi</h3>
+        <input type="text" id="nick-input" placeholder="Nick..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%;">
         <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%;"></div>
         <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
     </div>
@@ -50,11 +51,6 @@
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn" onclick="toggleEmoji()">😊 Emojiler</button>
-        <button class="f-btn" onclick="changeSize(2)">➕</button>
-        <button class="f-btn" onclick="changeSize(-2)">➖</button>
-        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
-        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-        <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:30px; height:22px; margin-left:15px;">
         <div style="flex: 1;"></div>
         <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
     </div>
@@ -67,18 +63,11 @@
     <div id="dj-mixer">
         <div class="mixer-head" id="mixer-drag">🎧 DJ MİXER PANELİ</div>
         <div class="mixer-body">
-            <button class="m-btn m-start" onclick="startStream()">YAYINI BAŞLAT</button>
             <button id="mic-btn" class="m-btn m-mic" onclick="toggleMic()">🎤 MİKROFON: KAPALI</button>
-            <input type="file" id="music-input" multiple accept="audio/*" style="font-size:10px; color:#ccc;">
-            <audio id="dj-player" controls style="width:100%; margin-top:5px; height:30px;"></audio>
-            <button class="m-btn m-stop" onclick="location.reload()">YAYINI KES</button>
+            <p style="font-size: 10px; color: #fff;">Müzik çalmak için mikrofonu açın ve müziği başlatın.</p>
+            <input type="file" id="music-input" accept="audio/*" style="font-size:10px; color:#ccc;">
+            <audio id="dj-player" controls style="width:100%; height:30px;"></audio>
         </div>
-    </div>
-
-    <div id="emoji-panel">
-        <span class="emoji-item" onclick="addE(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
-        <span class="emoji-item" onclick="addE(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
-        <span class="emoji-item" onclick="addE(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
     </div>
 
     <form id="form" onsubmit="sendM(event)">
@@ -90,11 +79,12 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var selectedColor = "#2ecc71";
-    var styles = { bold: false, italic: false };
     var micStream = null;
     var mediaRecorder = null;
-
+    
+    // SES ALICI AYARLARI (Dinleyici için)
+    var audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
     function joinChat() {
         socket.emit('join', { nick: document.getElementById('nick-input').value, password: document.getElementById('pass-input').value });
@@ -103,17 +93,17 @@
     socket.on('login success', function(data) {
         document.getElementById('login-overlay').style.display = 'none';
         if(data.role === 'DJ') document.getElementById('dj-mixer').style.display = 'block';
+        // Dinleyici tıkladığında ses kanalını aktif et
+        if (audioContext.state === 'suspended') audioContext.resume();
     });
 
-    // MİXER FONKSİYONLARI
-    function startStream() { alert("Yayın aktif! Mikrofonu açabilir veya müzik çalabilirsin."); }
-    
+    // DJ SES GÖNDERME
     async function toggleMic() {
         if (!micStream) {
             micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorder = new MediaRecorder(micStream);
-            mediaRecorder.ondataavailable = (e) => socket.emit('audio-stream', e.data);
-            mediaRecorder.start(200);
+            mediaRecorder = new MediaRecorder(micStream, { mimeType: 'audio/webm;codecs=opus' });
+            mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) socket.emit('audio-stream', e.data); };
+            mediaRecorder.start(250); // Paket süresi
             document.getElementById('mic-btn').innerText = "🎤 MİKROFON: AÇIK";
             document.getElementById('mic-btn').style.background = "#e67e22";
         } else {
@@ -123,39 +113,33 @@
         }
     }
 
-    // DİNLEYİCİ İÇİN SES ALMA
-    socket.on('audio-receive', function(data) {
-        let blob = new Blob([data], { type: 'audio/webm' });
-        let url = URL.createObjectURL(blob);
-        new Audio(url).play();
+    // DİNLEYİCİ SES ÇALMA (Kesintisiz)
+    socket.on('audio-receive', async function(data) {
+        try {
+            let buffer = await data.arrayBuffer();
+            audioContext.decodeAudioData(buffer, (decoded) => {
+                let source = audioContext.createBufferSource();
+                source.buffer = decoded;
+                source.connect(audioContext.destination);
+                source.start(0);
+            });
+        } catch(e) {}
     });
 
-    // MÜZİK ÇALAR YÜKLEME
-    document.getElementById('music-input').onchange = function(e) {
-        let file = e.target.files[0];
-        let url = URL.createObjectURL(file);
-        document.getElementById('dj-player').src = url;
+    // Tasarım Fonksiyonları
+    document.getElementById('music-input').onchange = (e) => {
+        document.getElementById('dj-player').src = URL.createObjectURL(e.target.files[0]);
         document.getElementById('dj-player').play();
     };
 
-    // TASARIM FONKSİYONLARI (ORİJİNAL)
-    function toggleEmoji() { var p = document.getElementById('emoji-panel'); p.style.display = (p.style.display==='none')?'flex':'none'; }
-    function addE(c) { document.getElementById('input').value += c + ' '; document.getElementById('input').focus(); }
-    function changeSize(a) { let m = document.getElementById('messages'); let s = parseInt(window.getComputedStyle(m).fontSize); m.style.fontSize = (s+a)+"px"; }
-    function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
-    function changeColor(c) { selectedColor = c; document.getElementById('input').style.color = c; }
     function sendM(e) {
         e.preventDefault(); var i = document.getElementById('input');
-        if(i.value) { socket.emit('chat message', { text: i.value, style: styles }); i.value = ''; }
+        if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; }
     }
 
     socket.on('chat message', function(data) {
-        var div = document.createElement('div'); div.style.marginBottom = "5px";
-        if(data.system) { div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`; }
-        else {
-            let s = data.style || {};
-            div.innerHTML = `<b style="color:${data.color}">👤 ${data.user}:</b> <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'};">${data.text}</span>`;
-        }
+        var div = document.createElement('div');
+        div.innerHTML = `<b style="color:${data.color}">👤 ${data.user}:</b> <span style="color:${data.color}">${data.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
@@ -164,19 +148,13 @@
         var uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         list.forEach(u => {
             let item = document.createElement('div'); item.className = 'user-item'; item.style.color = u.color;
-            let tag = (u.role === 'DJ') ? ' <small style="font-weight:bold; border-bottom:1px solid">Dj</small>' : '';
-            item.innerHTML = '👤 ' + u.nick + tag; uDiv.appendChild(item);
+            item.innerHTML = '👤 ' + u.nick + (u.role==='DJ' ? ' <small>Dj</small>' : '');
+            uDiv.appendChild(item);
         });
     });
 
-    // DRAG (SÜRÜKLEME)
-    dragElement(document.getElementById("dj-mixer"));
-    function dragElement(e) {
-        var p1=0, p2=0, p3=0, p4=0; document.getElementById("mixer-drag").onmousedown = dragM;
-        function dragM(e) { e.preventDefault(); p3=e.clientX; p4=e.clientY; document.onmouseup = closeD; document.onmousemove = elemD; }
-        function elemD(e) { e.preventDefault(); p1=p3-e.clientX; p2=p4-e.clientY; p3=e.clientX; p4=e.clientY; e.target.parentElement.style.top = (e.target.parentElement.offsetTop - p2) + "px"; e.target.parentElement.style.left = (e.target.parentElement.offsetLeft - p1) + "px"; }
-        function closeD() { document.onmouseup = null; document.onmousemove = null; }
-    }
+    // Sayfaya herhangi bir tıklama sesi aktif eder
+    window.onclick = () => { if (audioContext.state === 'suspended') audioContext.resume(); };
 </script>
 </body>
 </html>
