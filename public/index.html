@@ -2,120 +2,69 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Klasik Producer</title>
+    <title>Keyifciyiz FM - Flatcast Style</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { background: #1a1a1a; color: #ccc; font-family: Tahoma, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
-        /* GİRİŞ EKRANI */
-        #login-screen { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; align-items: center; justify-content: center; }
-        .login-box { border: 2px solid #555; padding: 30px; background: #222; text-align: center; box-shadow: 0 0 20px #000; }
-        .login-box input { display: block; width: 100%; padding: 10px; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444; }
-
-        /* ÜST: RİTİM */
-        .header { background: #111; padding: 10px; border-bottom: 1px solid #333; }
-        #visualizer { width: 100%; height: 35px; background: #000; border: 1px solid #333; }
-
-        /* ARAÇLAR: image_11.png sıralaması */
-        .tools { display: flex; gap: 4px; align-items: center; padding: 8px 10px; background: #222; border-bottom: 1px solid #333; }
-        .f-btn { background: #3a3a3a; color: #fff; border: 1px solid #555; padding: 4px 10px; cursor: pointer; font-size: 13px; font-weight: bold; min-width: 32px; height: 28px; }
-        .f-btn:hover, .f-btn.active { background: #555; border-color: #777; }
-        .f-btn.emoji { font-size: 16px; padding: 2px 6px; }
-        
-        /* Renk Picker */
-        #cp-wrap { position: relative; width: 40px; height: 28px; border: 1px solid #555; background: #ff0000; cursor: pointer; }
-        #cp-native { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
-
-        /* MESAJ YAZ KUTUSU ( image_11.png yerleşimi ) */
-        .input-bar { background: #111; padding: 12px; display: flex; gap: 10px; border-bottom: 1px solid #333; }
-        #m-input { flex: 1; padding: 12px; background: #000; color: #fff; border: 1px solid #444; font-size: 14px; outline: none; }
-        #send-btn { background: #3a3a3a; color: #fff; border: 1px solid #555; padding: 0 25px; font-weight: bold; cursor: pointer; }
-
-        /* ANA GÖVDE */
+        body { background: #1a1a1a; color: #ccc; font-family: Tahoma; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        /* Giriş Ekranı */
+        #login-screen { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; align-items: center; justify-content: center; }
+        .login-box { border: 1px solid #444; padding: 20px; background: #222; text-align: center; }
+        /* Üst Araç Çubuğu (image_11'e göre) */
+        .toolbar { display: flex; gap: 5px; padding: 10px; background: #333; align-items: center; border-bottom: 1px solid #444; }
+        .btn { background: #eee; border: 1px solid #999; padding: 2px 8px; cursor: pointer; color: #000; font-size: 12px; font-weight: bold; }
+        .btn:active { background: #ccc; }
+        /* Chat Alanı */
         .main { display: flex; flex: 1; overflow: hidden; }
-        #chat { flex: 3; padding: 15px; overflow-y: auto; background: #050505; border-right: 1px solid #333; }
-        .side { width: 250px; background: #111; display: flex; flex-direction: column; }
-        
-        /* MIXER PANELİ */
-        #mixer-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 2px solid #555; padding: 20px; display: none; flex-direction: column; z-index: 8888; width: 350px; }
-        .playlist { height: 120px; background: #000; overflow-y: auto; margin: 10px 0; border: 1px solid #333; padding: 5px; }
-        .playlist-item { padding: 6px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #222; color: #add8e6; }
-        .playlist-item:hover { background: #333; color: #fff; }
+        #chat-window { flex: 3; background: #000; padding: 10px; overflow-y: auto; border-right: 1px solid #333; }
+        .user-list { width: 200px; background: #111; padding: 10px; font-size: 12px; }
+        /* Yazı Yazma Alanı */
+        .input-area { padding: 10px; background: #222; display: flex; gap: 5px; }
+        #msg-input { flex: 1; padding: 10px; background: #000; color: #fff; border: 1px solid #444; }
+        #visualizer { width: 100%; height: 40px; background: #000; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
 <div id="login-screen">
     <div class="login-box">
-        <h2 style="color:#fff; margin-top:0; font-size:18px;">KEYİFCİYİZ FM</h2>
-        <input type="text" id="nick" placeholder="Nick...">
-        <input type="password" id="pass" placeholder="DJ Şifresi (123)">
-        <button onclick="baglan()" style="width:100%; padding:12px; background:#4a4a4a; color:#fff; border:1px solid #555; cursor:pointer; font-weight:bold;">LOGIN</button>
+        <h3 style="color:#fff">GİRİŞ PANELİ</h3>
+        <input type="text" id="nick" placeholder="Nickiniz..." style="width:100%; margin-bottom:10px; padding:8px;">
+        <input type="password" id="pass" placeholder="Şifre (DJ)" style="width:100%; margin-bottom:10px; padding:8px;">
+        <button onclick="baglan()" style="width:100%; padding:10px; cursor:pointer;">GİRİŞ</button>
     </div>
 </div>
 
-<div id="mixer-modal">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; color:#fff; font-size:16px;">STUDIO MIXER</h3>
-        <button onclick="toggleMixer()" style="background:none; border:none; color:#fff; cursor:pointer;">X</button>
-    </div>
-    <input type="file" id="files" multiple onchange="listeGuncelle()" style="font-size:11px; color:#888;">
-    <div id="playlist" class="playlist"></div>
-    <button onclick="yayiniBaslat()" style="padding:10px; background:#27ae60; border:none; color:#fff; font-weight:bold; cursor:pointer;">YAYINI AKTİF ET</button>
-</div>
-
-<div class="header">
+<div class="header" style="padding:5px; background:#111;">
     <canvas id="visualizer"></canvas>
-</div>
-
-<div class="tools">
-    <button class="f-btn" onclick="fontSize('up')">A+</button>
-    <button class="f-btn" onclick="fontSize('down')">A-</button>
-    <button class="f-btn emoji" onclick="toggleEmojiBox()">😊</button>
-    <button id="btn-bold" class="f-btn" onclick="setFormat('bold')">B</button>
-    <button id="btn-italic" class="f-btn" onclick="setFormat('italic')">I</button>
-    <button id="btn-underline" class="f-btn" onclick="setFormat('underline')">U</button>
-    
-    <div id="cp-wrap">
-        <input type="color" id="cp-native" value="#ff0000" onchange="format.color = this.value; document.getElementById('cp-wrap').style.background=this.value;">
+    <div class="toolbar">
+        <button class="btn" onclick="size('up')">A+</button>
+        <button class="btn" onclick="size('down')">A-</button>
+        <button class="btn" onclick="addEmoji('😊')">😊</button>
+        <button class="btn" id="b-btn" onclick="toggle('bold')">B</button>
+        <button class="btn" id="i-btn" onclick="toggle('italic')">I</button>
+        <button class="btn" id="u-btn" onclick="toggle('underline')">U</button>
+        <input type="color" id="clr" value="#ff0000" onchange="st.color=this.value" style="width:40px; height:24px; border:none; padding:0;">
+        <button class="btn">Sound</button>
+        <button class="btn" id="mixer-btn" style="display:none; background:#ff9900;" onclick="alert('Mixer Açıldı')">Login</button>
     </div>
-
-    <button class="f-btn" onclick="toggleSound()">🔊 Sound</button>
-    
-    <button id="mixer-btn" style="display:none; margin-left:auto; background:#ff9900; color:#000; border:none;" onclick="toggleMixer()">Mixeraç</button>
-</div>
-
-<div class="input-bar">
-    <input type="text" id="m-input" placeholder="Mesaj yaz kutusu..." onkeypress="if(event.key==='Enter') gonder()">
-    <button id="send-btn" onclick="gonder()">GÖNDER</button>
 </div>
 
 <div class="main">
-    <div id="chat"></div>
-    <div class="side">
-        <div style="background:#222; padding:6px; text-align:center; font-size:11px; font-weight:bold; color:#fff; border-bottom:1px solid #333;">DİNLEYİCİLER</div>
-        <div id="user-list" style="flex:1; padding:10px; overflow-y:auto; font-size:13px; color:#add8e6;"></div>
-    </div>
+    <div id="chat-window"></div>
+    <div class="user-list" id="users"></div>
 </div>
 
-<div id="emoji-box" style="display:none; position:fixed; top:120px; left:10px; background:#222; border:1px solid #555; padding:10px; z-index:999; display:grid; grid-template-columns: repeat(5, 1fr); gap:5px;">
-    <span style="cursor:pointer; font-size:20px;" onclick="addEmoji('😊')">😊</span>
-    <span style="cursor:pointer; font-size:20px;" onclick="addEmoji('😂')">😂</span>
-    <span style="cursor:pointer; font-size:20px;" onclick="addEmoji('😎')">😎</span>
-    <span style="cursor:pointer; font-size:20px;" onclick="addEmoji('🔥')">🔥</span>
-    <span style="cursor:pointer; font-size:20px;" onclick="addEmoji('🎧')">🎧</span>
+<div class="input-area">
+    <input type="text" id="msg-input" placeholder="Mesaj yaz kutusu..." onkeypress="if(event.key==='Enter') gonder()">
+    <button onclick="gonder()" class="btn" style="padding:10px 20px;">GÖNDER</button>
 </div>
 
-<audio id="radyo-ses" crossorigin="anonymous"></audio>
+<audio id="radyo" crossorigin="anonymous"></audio>
 
 <script>
     const socket = io();
-    let format = { bold: false, italic: false, underline: false, color: '#ff0000', size: 14 };
-    let isDJ = false;
-    let live = false;
+    let st = { bold: false, italic: false, underline: false, color: '#ff0000', size: 14 };
 
-    // GİRİŞ
     function baglan() {
         const n = document.getElementById('nick').value;
         const p = document.getElementById('pass').value;
@@ -123,115 +72,36 @@
     }
 
     socket.on('authStatus', d => {
-        isDJ = (d.role === "ADMIN");
         document.getElementById('login-screen').style.display = 'none';
-        if(isDJ) document.getElementById('mixer-btn').style.display = 'block';
+        if(d.role === "ADMIN") document.getElementById('mixer-btn').style.display = 'block';
     });
 
-    // MESAJLAŞMA VE FORMAT BUTONLARI (Aktif/Çalışan)
-    function setFormat(t) { 
-        format[t] = !format[t]; 
-        document.getElementById('btn-'+t).classList.toggle('active');
+    function toggle(t) { 
+        st[t] = !st[t]; 
+        document.getElementById(t[0]+'-btn').style.background = st[t] ? '#aaa' : '#eee';
     }
     
-    function fontSize(d) {
-        format.size = (d === 'up') ? Math.min(22, format.size+1) : Math.max(10, format.size-1);
-    }
-
-    function toggleEmojiBox() { const b = document.getElementById('emoji-box'); b.style.display = (b.style.display === 'grid') ? 'none' : 'grid'; }
-    function addEmoji(e) { document.getElementById('m-input').value += e; toggleEmojiBox(); }
-    
-    function toggleSound() { alert("Sound paneli açılıyor..."); }
+    function size(d) { st.size = (d === 'up') ? st.size + 2 : st.size - 2; }
+    function addEmoji(e) { document.getElementById('msg-input').value += e; }
 
     function gonder() {
-        const i = document.getElementById('m-input');
-        if(i.value) {
-            socket.emit('sendMessage', { text: i.value, format: format });
-            i.value = '';
+        const inp = document.getElementById('msg-input');
+        if(inp.value) {
+            socket.emit('sendMessage', { text: inp.value, format: st });
+            inp.value = '';
         }
     }
 
     socket.on('message', d => {
-        const chat = document.getElementById('chat');
-        const style = `color:${d.format.color}; font-weight:${d.format.bold?'bold':'normal'}; font-style:${d.format.italic?'italic':'normal'}; text-decoration:${d.format.underline?'underline':'none'}; font-size:${d.format.size}px;`;
-        chat.innerHTML += `<div style="margin-bottom:8px;"><b style="color:#ff9900">${d.user}:</b> <span style="${style}">${d.text}</span></div>`;
-        chat.scrollTop = chat.scrollHeight;
+        const cw = document.getElementById('chat-window');
+        const s = `color:${d.format.color}; font-weight:${d.format.bold?'bold':'normal'}; font-style:${d.format.italic?'italic':'normal'}; text-decoration:${d.format.underline?'underline':'none'}; font-size:${d.format.size}px;`;
+        cw.innerHTML += `<div><b>${d.user}:</b> <span style="${s}">${d.text}</span></div>`;
+        cw.scrollTop = cw.scrollHeight;
     });
 
-    // MIXER VE SES
-    function toggleMixer() { const m = document.getElementById('mixer-modal'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
-    
-    function listeGuncelle() {
-        const files = document.getElementById('files').files;
-        const p = document.getElementById('playlist');
-        p.innerHTML = Array.from(files).map((f, i) => `<div class="playlist-item" onclick="cal(${i})">🎵 ${f.name}</div>`).join('');
-    }
-
-    function cal(index) {
-        if(!live) return alert("Önce Yayını Aktif Et butonuna basın!");
-        const file = document.getElementById('files').files[index];
-        const r = new FileReader();
-        r.onload = e => {
-            socket.emit('audioStream', { data: e.target.result });
-            const audio = document.getElementById('radyo-ses');
-            audio.src = e.target.result; audio.play(); baslatRitim();
-        };
-        r.readAsDataURL(file);
-    }
-
-    function yayiniBaslat() { live = true; alert("Yayın aktif! Listeden bir şarkıya tıklayın."); }
-
-    socket.on('audioPlay', d => {
-        const audio = document.getElementById('radyo-ses'); audio.src = d.data; audio.play(); baslatRitim();
+    socket.on('updateUserList', u => {
+        document.getElementById('users').innerHTML = u.map(x => `<div>● ${x.username}</div>`).join('');
     });
-
-    // DİNLLEYİCİ LİSTESİ VE YÖNETİM
-    socket.on('updateUserList', users => {
-        const l = document.getElementById('user-list');
-        l.innerHTML = users.map(u => {
-            let html = `<div style="padding:4px 0; ${u.muted?'opacity:0.5':''}">● <span style="color:#ff9900">${u.title}</span> ${u.username}`;
-            if(isDJ && u.role !== "ADMIN") { html += ` <button onclick="adminIslem('${u.id}')" style="font-size:10px; background:#333; border:1px solid #444; color:#fff; cursor:pointer; padding:1px 3px;">Yönet</button>`; }
-            return html + `</div>`;
-        }).join('');
-    });
-
-    function adminIslem(id) {
-        const a = prompt("1: Ünvan Değiş, 2: Sustur/Aç, 3: At (Kick)");
-        if(a === "1") socket.emit('adminAction', { action: 'title', targetId: id, value: prompt("Yeni Ünvan:") });
-        else if(a === "2") socket.emit('adminAction', { action: 'mute', targetId: id });
-        else if(a === "3") { if(confirm("Atılsın mı?")) socket.emit('kickUser', { userId: id }); }
-    }
-
-    socket.on('kicked', () => { alert("Yayından Atıldınız!"); window.location.reload(); });
-
-    // RİTİM ÇİZGİSİ
-    let visualizerBaslatildi = false;
-    function baslatRitim() {
-        if(visualizerBaslatildi) return;
-        const audio = document.getElementById('radyo-ses');
-        const canvas = document.getElementById('visualizer');
-        const ctx = canvas.getContext('2d');
-        try {
-            const aCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const analyser = aCtx.createAnalyser();
-            const source = aCtx.createMediaElementSource(audio);
-            source.connect(analyser); analyser.connect(aCtx.destination);
-            analyser.fftSize = 64;
-            const buffer = analyser.frequencyBinCount;
-            const dataArr = new Uint8Array(buffer);
-            function draw() {
-                requestAnimationFrame(draw);
-                analyser.getByteFrequencyData(dataArr);
-                ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                dataArr.forEach((val, i) => {
-                    ctx.fillStyle = `rgb(255, ${val}, 0)`; // Turuncu-Sarı ritim
-                    ctx.fillRect(i * (canvas.width/buffer), canvas.height - val/2, (canvas.width/buffer)-1, val/2);
-                });
-            }
-            draw();
-            visualizerBaslatildi = true;
-        } catch(e) { console.log("Visualizer hatası (Normal):", e); }
-    }
 </script>
 </body>
 </html>
