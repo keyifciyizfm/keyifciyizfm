@@ -19,7 +19,7 @@ io.on('connection', (socket) => {
     const userIP = socket.handshake.address;
 
     socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
+        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Engellendiniz!');
         if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Şifre Hatalı!');
 
         socket.nick = data.nick || "Misafir";
@@ -29,7 +29,7 @@ io.on('connection', (socket) => {
         activeUsers[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(activeUsers));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı.`, system: true });
+        // Buradaki sistem mesajını istersen silebilirsin, sadece giriş bilgisidir.
     });
 
     socket.on('admin command', (data) => {
@@ -47,15 +47,15 @@ io.on('connection', (socket) => {
         } else if (data.action === 'make_dj') {
             activeUsers[targetId].role = 'DJ';
             activeUsers[targetId].color = '#f1c40f';
-            const targetSocket = io.sockets.sockets.get(targetId);
-            if(targetSocket) targetSocket.role = 'DJ'; 
+            const tSock = io.sockets.sockets.get(targetId);
+            if(tSock) tSock.role = 'DJ';
             io.emit('user list', Object.values(activeUsers));
         } else if (data.action === 'make_admin') {
             if (socket.role !== 'Yönetici') return;
             activeUsers[targetId].role = 'Admin';
             activeUsers[targetId].color = '#e67e22';
-            const targetSocket = io.sockets.sockets.get(targetId);
-            if(targetSocket) targetSocket.role = 'Admin';
+            const tSock = io.sockets.sockets.get(targetId);
+            if(tSock) tSock.role = 'Admin';
             io.emit('user list', Object.values(activeUsers));
         }
     });
