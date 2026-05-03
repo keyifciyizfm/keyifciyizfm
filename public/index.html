@@ -19,13 +19,8 @@
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         
-        .user-item { padding: 6px 0; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .user-item { padding: 8px 0; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; }
         
-        /* Yetki Rozetleri Tasarımı */
-        .badge { font-size: 9px; padding: 1px 5px; border-radius: 2px; font-weight: bold; color: #fff; text-transform: uppercase; margin-right: 5px; vertical-align: middle; }
-        .badge-owner { background: #ff4757; }
-        .badge-dj { background: #f1c40f; color: #000; }
-
         #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; box-shadow: 0 -5px 20px #000; z-index: 50; }
         .emoji-item { cursor: pointer; width: 30px; height: 30px; padding: 3px; border-radius: 4px; }
         .emoji-item img { width: 100%; height: 100%; }
@@ -83,7 +78,7 @@
     </div>
 
     <form id="form" onsubmit="sendMessage(event)">
-        <input id="input" autocomplete="off" placeholder="Mesajınızı buraya yazın..." />
+        <input id="input" autocomplete="off" placeholder="Mesaj yazın..." />
         <button type="submit" class="f-btn">GÖNDER</button>
     </form>
 </div>
@@ -114,7 +109,7 @@
 
     function toggleEmojiPanel() {
         var panel = document.getElementById('emoji-panel');
-        panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'flex' : 'none';
+        panel.style.display = (panel.style.display === 'flex') ? 'none' : 'flex';
     }
 
     function addEmojiCode(code) {
@@ -153,12 +148,14 @@
         } else {
             let s = data.style || {};
             let badge = "";
-            // Rozetler artık tam ismin yanında
-            if(data.role === 'Yönetici') badge = `<span class="badge badge-owner">Sahibi</span>`;
-            else if(data.role === 'DJ') badge = `<span class="badge badge-dj">Dj</span>`;
+            if(data.role === 'Yönetici') {
+                badge = `<span style="color:#ff4757; font-size:13px; margin-left:8px; font-weight:bold;">Sahibi</span>`;
+            } else if(data.role === 'DJ') {
+                badge = `<span style="color:#f1c40f; font-size:13px; margin-left:8px; font-weight:bold;">Dj</span>`;
+            }
             
             div.innerHTML = `
-                <span>${badge}<b style="color:${data.color}; cursor:pointer" onclick="admAction('${data.user}')">${data.user}:</b></span> 
+                <b style="color:${data.color}; cursor:pointer" onclick="admAction('${data.user}')">${data.user}</b>${badge}: 
                 <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">
                     ${data.text}</span>`;
         }
@@ -174,8 +171,15 @@
             item.className = 'user-item';
             item.style.color = u.color;
             item.onclick = () => admAction(u.nick);
-            let icon = u.role === 'Yönetici' ? '👑 ' : (u.role === 'DJ' ? '🎙️ ' : '👤 ');
-            item.innerHTML = icon + u.nick;
+            
+            let badge = "";
+            if(u.role === 'Yönetici') {
+                badge = `<span style="color:#ff4757; font-size:11px; margin-left:8px; font-weight:bold;">Sahibi</span>`;
+            } else if(u.role === 'DJ') {
+                badge = `<span style="color:#f1c40f; font-size:11px; margin-left:8px; font-weight:bold;">Dj</span>`;
+            }
+            
+            item.innerHTML = `<span>${u.nick}</span> ${badge}`;
             userDiv.appendChild(item);
         });
     });
