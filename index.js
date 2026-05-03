@@ -20,25 +20,35 @@ io.on('connection', (socket) => {
         }
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
-        socket.color = (socket.role === 'DJ') ? '#f1c40f' : "#2ecc71";
+        socket.color = (socket.role === 'DJ') ? '#f1c40f' : (data.color || "#2ecc71");
         users[socket.id] = { nick: socket.nick, color: socket.color, role: socket.role };
-        socket.emit('login success', { role: socket.role });
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(users));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    // SES PAKETİ AKTARIMI
     socket.on('audio-stream', (data) => {
         socket.broadcast.emit('audio-receive', data);
     });
 
     socket.on('chat message', (data) => {
-        io.emit('chat message', { user: socket.nick, text: data.text, color: socket.color, style: data.style });
+        io.emit('chat message', { 
+            user: socket.nick, 
+            text: data.text, 
+            color: socket.color, 
+            style: data.style 
+        });
     });
 
     socket.on('disconnect', () => {
-        delete users[socket.id];
-        io.emit('user list', Object.values(users));
+        if (users[socket.id]) {
+            const nick = users[socket.id].nick;
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
+        }
     });
 });
 
-server.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Radyo Yayında!`));
