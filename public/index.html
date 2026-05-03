@@ -1,4 +1,7 @@
-// Mesaj gelme kısmını (socket.on('chat message')) bununla değiştir:
+// index.html içindeki <script> kısmındaki chat message bölümünü bununla güncelle:
+
+var myRole = "";
+
 socket.on('chat message', (data) => {
     var div = document.createElement('div');
     div.style.marginBottom = "5px";
@@ -7,13 +10,13 @@ socket.on('chat message', (data) => {
         div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
     } else {
         let s = data.style || {};
-        // Ünvanı gösteren kısım [Yönetici] gibi
-        let roleBadge = `<span style="font-size:10px; border:1px solid ${data.color}; padding:1-2px; margin-right:5px; border-radius:3px;">${data.role}</span>`;
+        // Ünvan rozeti
+        let roleBadge = `<span style="font-size:9px; background:${data.color}; color:#000; padding:1px 4px; margin-right:5px; border-radius:2px; font-weight:bold;">${data.role.toUpperCase()}</span>`;
         
         div.innerHTML = `
             ${roleBadge}
-            <span style="font-weight:bold; color:${data.color}; cursor:pointer;" onclick="adminAction('${data.user}')">${data.user}:</span> 
-            <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">
+            <span style="font-weight:bold; color:${data.color}; cursor:pointer;" onclick="openAdminMenu('${data.user}')">${data.user}:</span> 
+            <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'}; word-wrap: break-word;">
                 ${data.text}
             </span>`;
     }
@@ -21,19 +24,22 @@ socket.on('chat message', (data) => {
     document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
 });
 
-// Yönetici için tıklama fonksiyonu
-function adminAction(targetNick) {
-    // Sadece kullanıcı "Yönetici" olarak giriş yaptıysa bu pencere açılsın
-    if (myRole === 'Yönetici') {
-        let action = confirm(`${targetNick} isimli kullanıcıya ne yapılsın?\nTamam: Odadan At (Kick)\nİptal: Vazgeç`);
-        if (action) {
-            socket.emit('admin command', { action: 'kick', targetNick: targetNick });
+// Yöneticiye özel tıklama menüsü
+function openAdminMenu(targetNick) {
+    if (myRole !== 'Yönetici') return; // Sadece yöneticiysen çalışır
+    if (targetNick === "Admin") return; // Kendini atamazsın
+
+    let choice = prompt(`Kullanıcı: ${targetNick}\n1: Odadan At (Kick)\n2: Engelle (Ban)\nSeçiminizi yazın (1 veya 2):`);
+    
+    if (choice === "1") {
+        socket.emit('admin command', { action: 'kick', targetNick: targetNick });
+    } else if (choice === "2") {
+        if(confirm(`${targetNick} tamamen engellensin mi?`)) {
+            socket.emit('admin command', { action: 'ban', targetNick: targetNick });
         }
     }
 }
 
-// Giriş başarılı olduğunda rolü kaydet
-var myRole = "";
 socket.on('login success', (data) => {
     myRole = data.role;
     document.getElementById('login-overlay').style.display = 'none';
