@@ -11,11 +11,14 @@
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 8px; display: flex; gap: 8px; border-bottom: 2px solid #222; align-items: center; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
+        
+        /* Mesaj kutusu için anlık değişim stili */
+        #input { flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px; transition: font-size 0.1s ease; }
     </style>
 </head>
 <body>
@@ -35,8 +38,8 @@
         <button class="f-btn" onclick="changeSize(2)">➕ Büyüt</button>
         <button class="f-btn" onclick="changeSize(-2)">➖ Küçült</button>
         <div style="flex:1"></div>
-        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:30px; height:25px; border:none; cursor:pointer; background:none;">
-        <span style="font-size:10px;">RENK</span>
+        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:40px; height:25px; border:none; cursor:pointer; background:none;">
+        <span style="font-size:10px;">RENK SEÇ</span>
         <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
     </div>
 
@@ -46,7 +49,7 @@
     </div>
 
     <form id="form" style="display:flex; padding:12px; background:#3b3b3b; gap:8px;">
-        <input id="input" autocomplete="off" placeholder="Mesajınız..." style="flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px;" />
+        <input id="input" autocomplete="off" placeholder="Mesajınız..." />
         <button type="submit" class="f-btn">GÖNDER</button>
     </form>
 </div>
@@ -54,7 +57,7 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var currentSize = 13;
+    var currentSize = 13; // Başlangıç boyutu
 
     function joinChat() {
         var nick = document.getElementById('nick-input').value;
@@ -64,14 +67,20 @@
         }
     }
 
+    // ANLIK DEĞİŞİM FONKSİYONU
     function changeSize(amt) {
         currentSize += amt;
+        // Limitler (çok küçük veya çok devasa olmasın)
         if(currentSize < 10) currentSize = 10;
-        if(currentSize > 30) currentSize = 30;
-        alert("Yazı boyutu: " + currentSize + "px");
+        if(currentSize > 34) currentSize = 34;
+        
+        // Input kutusundaki yazıyı anında büyüt/küçült
+        document.getElementById('input').style.fontSize = currentSize + "px";
     }
 
     function changeColor(color) {
+        // Hem input kutusunun yazı rengini hem de nick rengini değiştir
+        document.getElementById('input').style.color = color;
         socket.emit('change color', color);
     }
 
@@ -90,7 +99,7 @@
         if(data.system) {
             div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
         } else {
-            div.innerHTML = `<span style="font-weight:bold; color:${data.color}">${data.user}:</span> <span style="color:#eee; font-size:${data.size}px">${data.text}</span>`;
+            div.innerHTML = `<span style="font-weight:bold; color:${data.color}">${data.user}:</span> <span style="color:${data.color}; font-size:${data.size}px">${data.text}</span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
