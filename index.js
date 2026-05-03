@@ -45,7 +45,6 @@ io.on('connection', (socket) => {
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
         
         users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
-        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(users));
     });
@@ -56,7 +55,7 @@ io.on('connection', (socket) => {
         if (!targetId) return;
 
         if (data.action === 'kick') {
-            io.to(targetId).emit('force logout', 'Odadan atıldınız!');
+            io.to(targetId).emit('force logout', 'Atıldınız!');
             io.sockets.sockets.get(targetId)?.disconnect();
         } else if (data.action === 'ban') {
             bannedIPs.push(users[targetId].ip);
