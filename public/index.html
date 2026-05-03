@@ -8,12 +8,11 @@
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; }
-        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; } /* position relative ekledik */
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
-        .f-btn:hover { background: #555; }
         .f-btn.active { background: #2ecc71; color: #000; }
 
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
@@ -21,27 +20,30 @@
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
 
-        /* Emoji Paneli Stili */
+        /* Gerçekçi ve Hemen Üstte Açılan Emoji Paneli */
         #emoji-panel { 
             display: none; 
             position: absolute; 
-            bottom: 60px; 
-            left: 10px; 
+            bottom: 60px; /* Yazı kutusunun hemen üzerinde */
+            left: 12px; 
             background: #333; 
             border: 2px solid #555; 
-            padding: 10px; 
+            padding: 12px; 
             display: flex; 
             flex-wrap: wrap; 
-            gap: 8px; 
-            width: 250px; 
+            gap: 12px; 
+            width: 280px; 
             border-radius: 5px;
-            box-shadow: 0 0 15px #000;
+            box-shadow: 0 -5px 20px #000; /* Gölgelendirme yukarı doğru */
             z-index: 50;
         }
-        .emoji-item { cursor: pointer; font-size: 20px; transition: transform 0.1s; }
-        .emoji-item:hover { transform: scale(1.3); }
+        
+        /* Panelin içindeki gerçekçi emojiler */
+        .emoji-item { cursor: pointer; display: block; width: 30px; height: 30px; padding: 3px; transition: background 0.1s; border-radius: 4px; }
+        .emoji-item:hover { background: #555; }
+        .emoji-item img { width: 100%; height: 100%; }
 
-        #input-area { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; position: relative; }
+        form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; }
     </style>
 </head>
@@ -59,7 +61,7 @@
     <div id="top-gradient"></div>
     
     <div id="action-bar">
-        <button class="f-btn" onclick="toggleEmojiPanel()">😊 İkonlar</button>
+        <button class="f-btn" onclick="toggleEmojiPanel()">😊 Emojiler</button>
         
         <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
             <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
@@ -87,18 +89,14 @@
     </div>
 
     <div id="emoji-panel" style="display: none;">
-        <span class="emoji-item" onclick="addEmoji('😊')">😊</span>
-        <span class="emoji-item" onclick="addEmoji('😂')">😂</span>
-        <span class="emoji-item" onclick="addEmoji('😉')">😉</span>
-        <span class="emoji-item" onclick="addEmoji('😍')">😍</span>
-        <span class="emoji-item" onclick="addEmoji('😎')">😎</span>
-        <span class="emoji-item" onclick="addEmoji('👍')">👍</span>
-        <span class="emoji-item" onclick="addEmoji('👏')">👏</span>
-        <span class="emoji-item" onclick="addEmoji('🔥')">🔥</span>
-        <span class="emoji-item" onclick="addEmoji('❤️')">❤️</span>
-        <span class="emoji-item" onclick="addEmoji('🌹')">🌹</span>
-        <span class="emoji-item" onclick="addEmoji('🎵')">🎵</span>
-        <span class="emoji-item" onclick="addEmoji('🎙️')">🎙️</span>
+        <span class="emoji-item" onclick="addEmojiCode(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':cool:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':fire:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':thumbsup:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':microphone:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':rose:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"></span>
     </div>
 
     <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:12px; background:#3b3b3b; gap:8px;">
@@ -122,15 +120,14 @@
         }
     }
 
-    // Emoji Paneli Aç/Kapat
     function toggleEmojiPanel() {
         var panel = document.getElementById('emoji-panel');
         panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
     }
 
-    // Mesaj kutusuna emoji ekle
-    function addEmoji(emoji) {
-        document.getElementById('input').value += emoji;
+    // Mesaj kutusuna emoji kodunu ekler (gerçek resim sunucuda çevrilir)
+    function addEmojiCode(code) {
+        document.getElementById('input').value += code + ' '; 
         document.getElementById('input').focus();
     }
 
@@ -165,7 +162,7 @@
                 style: styles 
             });
             input.value = '';
-            document.getElementById('emoji-panel').style.display = 'none'; // Gönderince kapat
+            document.getElementById('emoji-panel').style.display = 'none';
         }
     }
 
@@ -178,9 +175,8 @@
             let s = data.style || {};
             div.innerHTML = `
                 <span style="font-weight:bold; color:${data.color}">${data.user}:</span> 
-                <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'}; word-wrap: break-word;">
-                    ${data.text}
-                </span>`;
+                <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'}; word-wrap: break-word; line-height:1.4;">
+                    ${data.text} </span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
