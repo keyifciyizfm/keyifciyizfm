@@ -7,27 +7,30 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+let users = {};
 
 io.on('connection', (socket) => {
-    // Yeni kullanıcı girişi
-    socket.on('join', (username) => {
-        socket.username = username;
-        io.emit('chat message', { user: 'SİSTEM', text: `${username} yayına bağlandı.`, type: 'system' });
+    socket.on('login', (data) => {
+        // Basit bir admin kontrolü (Geliştirmek için DB eklenebilir)
+        let role = (data.password === "admin123") ? "SÜPER ADMİN" : "ÜYE";
+        users[socket.id] = { username: data.username, role: role };
+        
+        io.emit('userList', Object.values(users));
+        socket.emit('loginSuccess', { role: role });
     });
 
-    // Mesajlaşma
-    socket.on('chat message', (data) => {
-        io.emit('chat message', data);
+    socket.on('chatMessage', (msg) => {
+        const user = users[socket.id];
+        io.emit('message', { user: user.username, role: user.role, text: msg });
     });
 
-    // Admin komutları (Yayın durdurma vb.)
-    socket.on('admin command', (cmd) => {
-        io.emit('system command', cmd);
+    socket.on('disconnect', () => {
+        delete users[socket.id];
+        io.emit('userList', Object.values(users));
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu aktif: http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server ${PORT} portunda aktif.`));
