@@ -1,57 +1,42 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+<div id="login-overlay">
+    <div id="login-box">
+        <h3 style="color:#f1c40f; margin-bottom:15px;">Sohbete Giriş</h3>
+        <input id="nick-input" class="auth-input" placeholder="Nickiniz" oninput="checkAdmin(this.value)">
+        <div id="admin-pass-area" style="display:none;">
+            <input id="pass-input" type="password" class="auth-input" placeholder="Yönetici Şifresi">
+        </div>
+        <button class="f-btn" style="width:100%; margin-top:10px;" onclick="joinChat()">ODAYA GİR</button>
+        <p id="msg" style="color:red; font-size:12px; margin-top:10px;"></p>
+    </div>
+</div>
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+<script>
+    // Bu fonksiyonu script kısmına ekle
+    function checkAdmin(val) {
+        // Eğer nick "Halil" ise şifre kutusunu aç
+        document.getElementById('admin-pass-area').style.display = (val === "Halil") ? "block" : "none";
+    }
 
-app.use(express.static(path.join(__dirname, 'public')));
+    function joinChat() {
+        var n = document.getElementById('nick-input').value.trim();
+        var p = document.getElementById('pass-input').value.trim();
+        if(!n) return;
+        socket.emit('join', { nick: n, password: p });
+    }
 
-let users = {}; 
-
-io.on('connection', (socket) => {
-    // Kullanıcı giriş yaptığında
-    socket.on('join', (data) => {
-        socket.nick = data.nick || "Misafir";
-        socket.color = "#2ecc71"; // Varsayılan renk
-        users[socket.id] = { nick: socket.nick, color: socket.color };
-        
-        io.emit('user list', Object.values(users));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
+    socket.on('auth error', (m) => document.getElementById('msg').innerText = m);
+    
+    socket.on('login success', (d) => { 
+        myRole = d.role; 
+        myNick = d.nick;
+        document.getElementById('login-overlay').style.display='none'; 
     });
 
-    // Renk değişimi
-    socket.on('change color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            socket.color = newColor;
-            io.emit('user list', Object.values(users));
-        }
-    });
-
-    // Mesaj iletimi
-    socket.on('chat message', (data) => {
-        if (users[socket.id]) {
-            io.emit('chat message', { 
-                user: socket.nick, 
-                text: data.text, 
-                color: data.color, 
-                style: data.style 
-            });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        if (users[socket.id]) {
-            const nick = users[socket.id].nick;
-            delete users[socket.id];
-            io.emit('user list', Object.values(users));
-            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sade Sohbet Sistemi Aktif!`));
+    // Daha önceki adm() fonksiyonunu da koru:
+    function adm(t) {
+        if(myRole !== 'Yönetici' || t === myNick) return;
+        var c = prompt(t + " için:\n1: At (Kick)\n2: Yasakla (IP Ban)");
+        if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: t});
+        if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: t});
+    }
+</script>
