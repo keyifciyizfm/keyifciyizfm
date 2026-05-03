@@ -11,7 +11,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
 
-// YÖNETİCİ AYARLARI
 const masterNick = "Keyifciyiz_Fm"; 
 const masterPass = "123456";
 
@@ -35,18 +34,13 @@ function parseEmojis(text) {
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        // Şifre Kontrolü
         if (data.nick === masterNick && data.password !== masterPass) {
             return socket.emit('auth error', 'Hatalı Şifre!');
         }
-
         socket.nick = data.nick || "Misafir";
-        // Yönetici rolünü DJ yapıyoruz
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
         socket.color = (socket.role === 'DJ') ? '#f1c40f' : '#2ecc71';
-        
         users[socket.id] = { nick: socket.nick, color: socket.color, role: socket.role };
-        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(users));
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
@@ -54,10 +48,9 @@ io.on('connection', (socket) => {
 
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
-            const cleanText = parseEmojis(data.text); 
             io.emit('chat message', { 
                 user: socket.nick, 
-                text: cleanText, 
+                text: parseEmojis(data.text), 
                 color: data.color || users[socket.id].color, 
                 style: data.style 
             });
@@ -74,5 +67,4 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo Yayında!`));
+server.listen(process.env.PORT || 3000);
