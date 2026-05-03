@@ -11,19 +11,18 @@
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 5px; border-bottom: 1px solid #222; cursor: pointer; }
-
-        /* SADE YÖNETİM MENÜSÜ */
+        
+        /* YÖNETİCİ MENÜ STİLİ */
         #admin-menu { 
             display: none; position: absolute; background: #333; border: 1px solid #f1c40f; 
             padding: 5px; z-index: 2000; width: 140px; box-shadow: 0 5px 15px #000; 
         }
-        .menu-item { padding: 10px; color: white; font-size: 11px; cursor: pointer; border-bottom: 1px solid #444; }
-        .menu-item:last-child { border-bottom: none; }
+        .menu-item { padding: 8px; color: white; font-size: 11px; cursor: pointer; border-bottom: 1px solid #444; }
         .menu-item:hover { background: #f1c40f; color: black; }
     </style>
 </head>
@@ -59,10 +58,15 @@
 <script>
     var socket = io();
     var myRole = 'Dinleyici';
-    var selId = null;
+    var selectedUserId = null;
 
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    function joinChat() { socket.emit('join', { nick: document.getElementById('nick-input').value, password: document.getElementById('pass-input').value }); }
+    function joinChat() { 
+        socket.emit('join', { 
+            nick: document.getElementById('nick-input').value, 
+            password: document.getElementById('pass-input').value 
+        }); 
+    }
 
     socket.on('login success', (data) => {
         document.getElementById('login-overlay').style.display = 'none';
@@ -74,13 +78,14 @@
         list.forEach(u => {
             const item = document.createElement('div');
             item.className = 'user-item'; item.style.color = u.color;
-            item.innerHTML = `👤 ${u.nick} ${u.role === 'DJ' ? '<small>(DJ)</small>' : ''}`;
+            item.innerHTML = `👤 ${u.nick}`;
+            
             item.onclick = (e) => {
-                if(myRole === 'DJ' && u.nick !== "Keyifciyiz_Fm") { // Kendine menü açılmasın
-                    selId = u.id;
+                if(myRole === 'DJ' && u.nick !== "Keyifciyiz_Fm") {
+                    selectedUserId = u.id;
                     const menu = document.getElementById('admin-menu');
-                    menu.style.display = 'block'; 
-                    menu.style.left = e.pageX + "px"; 
+                    menu.style.display = 'block';
+                    menu.style.left = e.pageX + "px";
                     menu.style.top = e.pageY + "px";
                 }
             };
@@ -89,10 +94,11 @@
     });
 
     function execAction(act) {
-        socket.emit('admin-action', { action: act, targetId: selId });
+        socket.emit('admin-action', { action: act, targetId: selectedUserId });
         document.getElementById('admin-menu').style.display = 'none';
     }
 
+    // Dışarı tıklayınca menüyü kapat
     window.onclick = (e) => { if(!e.target.closest('.user-item')) document.getElementById('admin-menu').style.display = 'none'; };
 
     function sendM(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; } }
