@@ -42,6 +42,13 @@ io.on('connection', (socket) => {
         io.emit('user list', Object.values(users));
     });
 
+    // SES YAYINI: DJ'den gelen ses paketlerini herkese iletir
+    socket.on('voice-data', (blob) => {
+        if (socket.role === 'Yönetici') {
+            socket.broadcast.emit('audio-stream', blob);
+        }
+    });
+
     socket.on('admin command', (data) => {
         if (socket.role !== 'Yönetici') return;
         const targetId = Object.keys(users).find(id => users[id].nick === data.targetNick);
