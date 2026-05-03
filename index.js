@@ -1,89 +1,25 @@
-let isLoginMode = false;
-let currentUser = null;
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-// Başlangıçta admin hesabı tanımlayalım (Test için)
-if(!localStorage.getItem("admin")) {
-    localStorage.setItem("admin", JSON.stringify({pass: "1234", role: "yönetici"}));
-}
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-function toggleAuthMode() {
-    isLoginMode = !isLoginMode;
-    document.getElementById('auth-title').innerText = isLoginMode ? "Giriş Yap" : "Kayıt Ol";
-    document.getElementById('main-auth-btn').innerText = isLoginMode ? "Giriş Yap" : "Kayıt Ol";
-    document.getElementById('toggle-link').innerText = isLoginMode ? "Hesabın yok mu? Kayıt Ol" : "Zaten hesabım var";
-}
+// Public klasörünü dışarı açıyoruz
+app.use(express.static(path.join(__dirname, 'public')));
 
-function handleAuth() {
-    const nick = document.getElementById('nick-input').value;
-    const pass = document.getElementById('pass-input').value;
-
-    if(!nick || !pass) return alert("Boş alan bırakmayın!");
-
-    if(!isLoginMode) {
-        // KAYIT
-        if(localStorage.getItem(nick)) return alert("Bu nick zaten alınmış!");
-        localStorage.setItem(nick, JSON.stringify({pass: pass, role: "kullanıcı"}));
-        alert("Kayıt başarılı! Giriş yapabilirsiniz.");
-        toggleAuthMode();
-    } else {
-        // GİRİŞ
-        const userData = JSON.parse(localStorage.getItem(nick));
-        if(userData && userData.pass === pass) {
-            currentUser = { nick: nick, role: userData.role };
-            loginSuccess();
-        } else {
-            alert("Hatalı nick veya şifre!");
-        }
-    }
-}
-
-function loginSuccess() {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'flex';
-    document.getElementById('user-display').innerText = `Hoş geldin, ${currentUser.nick} (${currentUser.role})`;
-    updateUserList();
-}
-
-function updateUserList() {
-    const userListDiv = document.getElementById('online-users');
-    // Örnek kullanıcılar (Normalde sunucudan gelir)
-    const onlineMock = [
-        {nick: "KaragüL", role: "yönetici"},
-        {nick: "DJ_Aysima", role: "dj"},
-        {nick: currentUser.nick, role: currentUser.role}
-    ];
-
-    userListDiv.innerHTML = '<h4>Online Dostlar</h4>';
-    onlineMock.forEach(user => {
-        let adminButtons = "";
-        
-        // Eğer giriş yapan kişi YÖNETİCİ ise butonları göster
-        if(currentUser.role === "yönetici" && user.nick !== currentUser.nick) {
-            adminButtons = `
-                <span class="admin-controls">
-                    <b class="btn-kick" onclick="adminAction('at', '${user.nick}')">[At]</b>
-                    <b class="btn-dj" onclick="adminAction('dj', '${user.nick}')">[DJ Yap]</b>
-                </span>
-            `;
-        }
-
-        userListDiv.innerHTML += `<div><strong>${user.nick}</strong> <small>(${user.role})</small> ${adminButtons}</div>`;
+io.on('connection', (socket) => {
+    // Yeni biri bağlandığında rastgele bir Nick verelim (şimdilik)
+    const userName = "Misafir-" + Math.floor(Math.random() * 1000);
+    
+    socket.on('chat message', (msg) => {
+        io.emit('chat message', { user: userName, text: msg });
     });
-}
+});
 
-function adminAction(action, target) {
-    if(action === 'at') {
-        alert(target + " odadan atıldı!");
-    } else if(action === 'dj') {
-        alert(target + " artık DJ yetkisine sahip!");
-    }
-}
-
-function sendMessage() {
-    const msg = document.getElementById('msg-input').value;
-    if(!msg) return;
-    const msgDiv = document.getElementById('messages');
-    msgDiv.innerHTML += `<div><strong>${currentUser.nick}:</strong> ${msg}</div>`;
-    document.getElementById('msg-input').value = "";
-    msgDiv.scrollTop = msgDiv.scrollHeight;
-}
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Sunucu ${PORT} portunda hazır!`);
+});
