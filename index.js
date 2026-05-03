@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let users = {}; 
 let bannedIPs = [];
 
-const masterNick = "Halil";
+const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
 function parseEmojis(text) {
