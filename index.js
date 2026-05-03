@@ -9,49 +9,68 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let users = {}; 
+let activeUsers = {}; 
+let bannedIPs = []; // IP tabanlı basit engelleme (sayfa yenilese de giremez)
+
+// SENİN BİLGİLERİN
+const adminNick = "Halil"; 
+const adminPass = "123456"; 
 
 io.on('connection', (socket) => {
-    // Kullanıcı giriş yaptığında
+    const userIP = socket.handshake.address;
+
     socket.on('join', (data) => {
+        if (bannedIPs.includes(userIP)) {
+            return socket.emit('auth error', 'Bu odaya girişiniz engellenmiştir!');
+        }
+
+        // Eğer Halil nickiyle giriliyorsa şifre kontrol et
+        if (data.nick === adminNick && data.password !== adminPass) {
+            return socket.emit('auth error', 'Bu nick yöneticiye aittir, şifre yanlış!');
+        }
+
         socket.nick = data.nick || "Misafir";
-        socket.color = "#2ecc71"; // Varsayılan renk
-        users[socket.id] = { nick: socket.nick, color: socket.color };
+        socket.role = (data.nick === adminNick) ? 'Yönetici' : 'Dinleyici';
+        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
         
-        io.emit('user list', Object.values(users));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
+        activeUsers[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
+        
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        io.emit('user list', Object.values(activeUsers));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı.`, system: true });
     });
 
-    // Renk değişimi
-    socket.on('change color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            socket.color = newColor;
-            io.emit('user list', Object.values(users));
+    socket.on('admin command', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
+        
+        if (targetId) {
+            if (data.action === 'kick') {
+                io.to(targetId).emit('force logout', 'Yönetici sizi odadan attı!');
+                io.sockets.sockets.get(targetId).disconnect();
+            } else if (data.action === 'ban') {
+                bannedIPs.push(activeUsers[targetId].ip); // IP'sini listeye al
+                io.to(targetId).emit('force logout', 'Süresiz engellendiniz!');
+                io.sockets.sockets.get(targetId).disconnect();
+            }
         }
     });
 
-    // Mesaj iletimi
     socket.on('chat message', (data) => {
-        if (users[socket.id]) {
+        if (activeUsers[socket.id]) {
             io.emit('chat message', { 
-                user: socket.nick, 
-                text: data.text, 
-                color: data.color, 
-                style: data.style 
+                user: socket.nick, role: socket.role, 
+                text: data.text, color: data.color, style: data.style 
             });
         }
     });
 
     socket.on('disconnect', () => {
-        if (users[socket.id]) {
-            const nick = users[socket.id].nick;
-            delete users[socket.id];
-            io.emit('user list', Object.values(users));
-            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
+        if (activeUsers[socket.id]) {
+            delete activeUsers[socket.id];
+            io.emit('user list', Object.values(activeUsers));
         }
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sade Sohbet Sistemi Aktif!`));
+server.listen(process.env.PORT || 3000);
