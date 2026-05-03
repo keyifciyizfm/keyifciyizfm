@@ -21,14 +21,13 @@
         
         .user-item { padding: 6px 0; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; gap: 5px; }
         
-        /* Rozetler */
-        .badge { font-size: 9px; padding: 1px 4px; border-radius: 2px; font-weight: bold; color: #fff; text-transform: uppercase; margin-right: 5px; }
+        /* Yetki Rozetleri Tasarımı */
+        .badge { font-size: 9px; padding: 1px 5px; border-radius: 2px; font-weight: bold; color: #fff; text-transform: uppercase; margin-right: 5px; vertical-align: middle; }
         .badge-owner { background: #ff4757; }
         .badge-dj { background: #f1c40f; color: #000; }
 
         #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; box-shadow: 0 -5px 20px #000; z-index: 50; }
         .emoji-item { cursor: pointer; width: 30px; height: 30px; padding: 3px; border-radius: 4px; }
-        .emoji-item:hover { background: #555; }
         .emoji-item img { width: 100%; height: 100%; }
 
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
@@ -39,12 +38,12 @@
 
 <div id="login-overlay">
     <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Sohbet Girişi</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." maxlength="15" oninput="checkHalil(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Hoş Geldiniz</h3>
+        <input type="text" id="nick-input" placeholder="Rumuz..." maxlength="15" oninput="checkHalil(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         <div id="pass-area" style="display:none;">
-            <input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+            <input type="password" id="pass-input" placeholder="Yönetici Şifresi..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         </div>
-        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">GİRİŞ YAP</button>
         <p id="error-msg" style="color:red; font-size:11px; margin-top:10px;"></p>
     </div>
 </div>
@@ -66,7 +65,7 @@
             <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:35px; height:22px; cursor:pointer; background:none; border:1px solid #222;">
         </div>
         <div style="flex: 1;"></div>
-        <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
+        <button class="f-btn" style="background: #e74c3c; border:none;" onclick="location.reload()">ÇIKIŞ</button>
     </div>
 
     <div id="main-area">
@@ -84,7 +83,7 @@
     </div>
 
     <form id="form" onsubmit="sendMessage(event)">
-        <input id="input" autocomplete="off" placeholder="Mesajınız..." />
+        <input id="input" autocomplete="off" placeholder="Mesajınızı buraya yazın..." />
         <button type="submit" class="f-btn">GÖNDER</button>
     </form>
 </div>
@@ -115,7 +114,7 @@
 
     function toggleEmojiPanel() {
         var panel = document.getElementById('emoji-panel');
-        panel.style.display = (panel.style.display === 'flex') ? 'none' : 'flex';
+        panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'flex' : 'none';
     }
 
     function addEmojiCode(code) {
@@ -154,11 +153,12 @@
         } else {
             let s = data.style || {};
             let badge = "";
+            // Rozetler artık tam ismin yanında
             if(data.role === 'Yönetici') badge = `<span class="badge badge-owner">Sahibi</span>`;
             else if(data.role === 'DJ') badge = `<span class="badge badge-dj">Dj</span>`;
             
             div.innerHTML = `
-                ${badge}<b style="color:${data.color}; cursor:pointer" onclick="admAction('${data.user}')">${data.user}:</b> 
+                <span>${badge}<b style="color:${data.color}; cursor:pointer" onclick="admAction('${data.user}')">${data.user}:</b></span> 
                 <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">
                     ${data.text}</span>`;
         }
@@ -182,7 +182,7 @@
 
     function admAction(tN) {
         if (myRole !== 'Yönetici' || tN === myNick) return;
-        var c = prompt(tN + " için işlem: 1:At, 2:Ban, 3:DJ Yap");
+        var c = prompt(tN + " için işlem: 1: At, 2: Ban, 3: DJ Yap");
         if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: tN});
         if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: tN});
         if(c === "3") socket.emit('admin command', {action: 'make_dj', targetNick: tN});
