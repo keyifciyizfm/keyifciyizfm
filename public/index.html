@@ -2,53 +2,95 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sohbet - Flatcast Style</title>
     <style>
-        body { background: #222; color: #00ff00; font-family: Tahoma, sans-serif; display: flex; justify-content: center; padding-top: 50px; }
-        #chat-container { width: 800px; height: 500px; background: #333; border: 3px solid #555; display: flex; flex-direction: column; }
-        #top-bar { background: linear-gradient(to right, green, yellow, red); height: 10px; width: 100%; }
-        #main-area { display: flex; flex: 1; overflow: hidden; }
-        #messages { flex: 3; background: #000; margin: 10px; padding: 10px; overflow-y: auto; border: 1px solid #444; }
-        #user-list { flex: 1; background: #111; margin: 10px 10px 10px 0; border: 1px solid #444; padding: 10px; font-size: 14px; }
-        #input-area { padding: 10px; background: #444; display: flex; }
-        input { flex: 1; background: #000; color: #fff; border: 1px solid #777; padding: 5px; }
-        button { background: #666; color: white; border: 1px solid #999; margin-left: 5px; cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #ccc; }
+        
+        #chat-container { width: 900px; height: 550px; background: #333; border: 2px solid #444; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        
+        /* Nostaljik Üst Bar */
+        #top-gradient { height: 12px; width: 100%; background: linear-gradient(to right, #00ff00 0%, #00ff00 40%, #ffff00 70%, #ff0000 100%); border-bottom: 1px solid #000; }
+        
+        /* Action Bar (Butonlar) */
+        #action-bar { background: #444; padding: 5px; display: flex; gap: 5px; border-bottom: 1px solid #222; align-items: center; }
+        button { background: linear-gradient(to bottom, #666, #333); border: 1px solid #000; color: #fff; padding: 3px 12px; font-size: 11px; cursor: pointer; border-radius: 2px; }
+        button:hover { background: #555; }
+        .btn-blue { color: #5bc0de; }
+        .btn-yellow { color: #f0ad4e; }
+
+        /* Ana Alan */
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 5px; gap: 5px; }
+        
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 10px; overflow-y: auto; font-size: 13px; line-height: 1.5; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 10px; font-size: 12px; color: #888; }
+        
+        /* Mesaj Yazma Alanı */
+        #input-area { background: #333; padding: 10px; display: flex; gap: 5px; border-top: 1px solid #444; }
+        input { flex: 1; background: #000; border: 1px solid #555; color: #fff; padding: 8px; outline: none; }
+        input:focus { border-color: #00ff00; }
+
+        /* Mesaj Stilleri */
+        .msg-line { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        .nick { color: #00ff00; font-weight: bold; margin-right: 5px; }
+        .time { color: #555; font-size: 10px; margin-left: 10px; }
     </style>
 </head>
 <body>
-    <div id="chat-container">
-        <div id="top-bar"></div>
-        <div id="main-area">
-            <div id="messages"></div>
-            <div id="user-list"><b>Kullanıcılar:</b><br><br>• Sen</div>
-        </div>
-        <form id="form" id="input-area" style="display:flex; padding: 10px;">
-            <input id="input" autocomplete="off" placeholder="Mesajınızı yazın..." />
-            <button>Gönder</button>
-        </form>
+
+<div id="chat-container">
+    <div id="top-gradient"></div>
+    
+    <div id="action-bar">
+        <button>💬 Chat</button>
+        <button>🔍 Zoom+</button>
+        <button>🔍 Zoom-</button>
+        <div style="flex:1"></div>
+        <button class="btn-yellow">🎨 Color</button>
+        <button>🔊 Sound</button>
+        <button class="btn-blue">➡ Login</button>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        var socket = io();
-        var form = document.getElementById('form');
-        var input = document.getElementById('input');
-        var messages = document.getElementById('messages');
+    <div id="main-area">
+        <div id="messages" id="message-box"></div>
+        <div id="user-list">
+            <b style="color:#aaa">Kullanıcılar</b><br><br>
+            <div id="online-users">• Misafir (Sen)</div>
+        </div>
+    </div>
 
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (input.value) {
-                socket.emit('chat message', input.value);
-                input.value = '';
-            }
-        });
+    <form id="form" id="input-area" style="display:flex; padding:10px; background:#333;">
+        <input id="input" autocomplete="off" placeholder="Mesajınızı buraya yazın..." />
+        <button type="submit" style="padding: 0 20px;">GÖNDER</button>
+    </form>
+</div>
 
-        socket.on('chat message', function(data) {
-            var item = document.createElement('div');
-            item.innerHTML = `<strong>${data.user}:</strong> ${data.text}`;
-            messages.appendChild(item);
-            messages.scrollTop = messages.scrollHeight;
-        });
-    </script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var form = document.getElementById('form');
+    var input = document.getElementById('input');
+    var msgBox = document.getElementById('messages');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (input.value) {
+            socket.emit('chat message', input.value);
+            input.value = '';
+        }
+    });
+
+    socket.on('chat message', function(data) {
+        var div = document.createElement('div');
+        div.className = 'msg-line';
+        var now = new Date();
+        var timeStr = now.getHours() + ":" + (now.getMinutes()<10?'0':'') + now.getMinutes();
+        
+        div.innerHTML = `<span class="nick">${data.user}:</span> <span>${data.text}</span> <span class="time">(${timeStr})</span>`;
+        msgBox.appendChild(div);
+        msgBox.scrollTop = msgBox.scrollHeight;
+    });
+</script>
 </body>
 </html>
