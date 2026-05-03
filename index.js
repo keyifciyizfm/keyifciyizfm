@@ -12,6 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let users = {}; 
 let bannedIPs = [];
 
+// YÖNETİCİ BİLGİLERİ
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
@@ -92,4 +93,6 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+server.listen(process.env.PORT || 3000, () => {
+    console.log("Sunucu 3000 portunda aktif!");
+});
