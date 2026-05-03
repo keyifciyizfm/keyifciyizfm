@@ -15,11 +15,16 @@ if (!fs.existsSync(dbFile)) fs.writeFileSync(dbFile, JSON.stringify({}));
 let registeredUsers = JSON.parse(fs.readFileSync(dbFile));
 
 let activeUsers = {}; 
-let bannedUsers = []; // Banlananları burada tutuyoruz
+let bannedUsers = []; 
 
-// --- YETKİ TANIMLAMALARI ---
+// --- YÖNETİCİ VE YETKİ AYARLARI ---
+const adminConfig = {
+    nick: "Admin",    // Buraya kendi kullanıcı adını yaz
+    pass: "12345"     // Buraya kendi şifreni yaz
+};
+
 const roles = {
-    'Halil': 'Yönetici', // Buraya kendi nickini yaz
+    [adminConfig.nick]: 'Yönetici',
     'DJ_Aysima': 'DJ',
     'Mod_Rehber': 'Sorumlu'
 };
@@ -27,7 +32,7 @@ const roles = {
 io.on('connection', (socket) => {
     
     socket.on('register', (data) => {
-        if (registeredUsers[data.nick]) {
+        if (registeredUsers[data.nick] || data.nick === adminConfig.nick) {
             socket.emit('auth error', 'Bu kullanıcı adı zaten alınmış!');
         } else {
             registeredUsers[data.nick] = { password: data.password };
@@ -38,14 +43,17 @@ io.on('connection', (socket) => {
 
     socket.on('login', (data) => {
         if (bannedUsers.includes(data.nick)) {
-            return socket.emit('auth error', 'Bu odaya girişiniz engellenmiştir!');
+            return socket.emit('auth error', 'Girişiniz engellendi!');
         }
 
+        let isAdmin = (data.nick === adminConfig.nick && data.password === adminConfig.pass);
         let user = registeredUsers[data.nick];
-        if (user && user.password === data.password) {
+
+        if (isAdmin || (user && user.password === data.password)) {
             socket.nick = data.nick;
-            socket.role = roles[data.nick] || 'Dinleyici'; // Ünvanı ata
-            socket.color = (socket.role === 'Yönetici') ? '#ff0000' : '#2ecc71';
+            socket.role = roles[data.nick] || 'Dinleyici';
+            // Yönetici ise rengi kırmızı olsun
+            socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
             
             activeUsers[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color };
             
@@ -57,9 +65,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    // --- YÖNETİCİ KOMUTLARI ---
+    // --- YÖNETİCİ KOMUTLARI (Kick/Ban) ---
     socket.on('admin command', (data) => {
-        if (socket.role !== 'Yönetici') return; // Yetkisi yoksa çalıştırma
+        if (socket.role !== 'Yönetici') return;
 
         const targetSocketId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
         
@@ -67,10 +75,12 @@ io.on('connection', (socket) => {
             io.to(targetSocketId).emit('force logout', 'Yönetici tarafından odadan atıldınız!');
             io.sockets.sockets.get(targetSocketId).disconnect();
         } 
-        else if (data.action === 'ban' && targetSocketId) {
+        else if (data.action === 'ban' && data.targetNick !== adminConfig.nick) {
             bannedUsers.push(data.targetNick);
-            io.to(targetSocketId).emit('force logout', 'Süresiz olarak engellendiniz!');
-            io.sockets.sockets.get(targetSocketId).disconnect();
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('force logout', 'Süresiz engellendiniz!');
+                io.sockets.sockets.get(targetSocketId).disconnect();
+            }
         }
     });
 
@@ -78,7 +88,7 @@ io.on('connection', (socket) => {
         if (activeUsers[socket.id]) {
             io.emit('chat message', { 
                 user: socket.nick, 
-                role: socket.role, // Ünvanı mesajla gönder
+                role: socket.role, 
                 text: data.text, 
                 color: data.color, 
                 style: data.style 
@@ -95,4 +105,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Yetki Sistemi Aktif!`));
+server.listen(PORT, () => console.log(`Yönetici Paneli Aktif!`));
