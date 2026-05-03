@@ -173,7 +173,7 @@
             
             let badge = "";
             if(u.role === 'Yönetici') {
-                badge = `<span class="rank-text" style="color:#ff4757; border-bottom:1px solid #ff4757;">Sahibi</span>`;
+                badge = `<span class="rank-text" style="color:#ff4757; border-bottom:1px solid #ff4757;">Dj</span>`;
             } else if(u.role === 'DJ') {
                 badge = `<span class="rank-text" style="color:#f1c40f; border-bottom:1px solid #f1c40f;">Dj</span>`;
             }
@@ -185,7 +185,7 @@
 
     function admAction(tN) {
         if (myRole !== 'Yönetici' || tN === myNick) return;
-        var c = prompt(tN + " için işlem: 1: At, 2: Ban, 3: DJ Yap");
+        var c = prompt(tN + " için işlem: 1: Odadan At, 2: Banla, 3: DJ Yap");
         if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: tN});
         if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: tN});
         if(c === "3") socket.emit('admin command', {action: 'make_dj', targetNick: tN});
