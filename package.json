@@ -1,12 +1,16 @@
 {
   "name": "keyifciyizfm",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Keyifciyiz FM - Radyo ve Canlı Sohbet Uygulaması",
+  "main": "public/index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "echo 'Uygulama yayında! public/index.html dosyasını tarayıcıda açın.' && exit 0"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2"
-  }
+  "keywords": [
+    "radyo",
+    "chat",
+    "sohbet"
+  ],
+  "author": "KeyifciyizFM",
+  "license": "ISC"
 }
