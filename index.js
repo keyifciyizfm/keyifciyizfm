@@ -12,28 +12,27 @@ const io = new Server(server, {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let connectedUsers = {};
+let users = {};
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        // İSTEDİĞİN ÖZEL ADMİN KONTROLÜ
+        // İSTEDİĞİN ADMİN BİLGİLERİ
         const isAdmin = (data.username === "keyifciyizfm" && data.password === "Keyif123");
         
-        connectedUsers[socket.id] = { 
-            username: data.username || "Misafir", 
+        users[socket.id] = { 
+            username: data.username, 
             role: isAdmin ? "ADMIN" : "USER",
             title: isAdmin ? "[ADMIN]" : "[Üye]",
             muted: false,
             id: socket.id 
         };
 
-        socket.emit('authStatus', { role: connectedUsers[socket.id].role });
-        io.emit('updateUserList', Object.values(connectedUsers));
-        console.log(`${data.username} giriş yaptı.`);
+        socket.emit('authStatus', { role: users[socket.id].role });
+        io.emit('updateUserList', Object.values(users));
     });
 
     socket.on('sendMessage', (data) => {
-        const user = connectedUsers[socket.id];
+        const user = users[socket.id];
         if(user && !user.muted) {
             io.emit('message', { 
                 user: `${user.title} ${user.username}`, 
@@ -43,25 +42,21 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Ses ve Admin İşlemleri
     socket.on('audioStream', (data) => { socket.broadcast.emit('audioPlay', data); });
     
     socket.on('adminAction', (data) => {
-        if (connectedUsers[socket.id]?.role === "ADMIN") {
-            const target = connectedUsers[data.targetId];
-            if (target) {
-                if (data.action === "mute") target.muted = !target.muted;
-                if (data.action === "kick") io.to(data.targetId).emit('kicked');
-                io.emit('updateUserList', Object.values(connectedUsers));
-            }
+        if (users[socket.id]?.role === "ADMIN") {
+            if (data.action === "kick") io.to(data.targetId).emit('kicked');
+            if (data.action === "mute") users[data.targetId].muted = !users[data.targetId].muted;
+            io.emit('updateUserList', Object.values(users));
         }
     });
 
     socket.on('disconnect', () => {
-        delete connectedUsers[socket.id];
-        io.emit('updateUserList', Object.values(connectedUsers));
+        delete users[socket.id];
+        io.emit('updateUserList', Object.values(users));
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo Yayında: Port ${PORT}`));
+server.listen(PORT, () => console.log(`Radyo aktif!`));
