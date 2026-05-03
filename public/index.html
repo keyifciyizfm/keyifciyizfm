@@ -1,24 +1,23 @@
-<div id="action-bar" style="background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222;">
-    
+<div id="action-bar">
     <button class="f-btn">💬 Chat</button>
     
-    <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-        <button class="f-btn" onclick="changePersonalSize(2)" title="Büyüt">➕</button>
-        <button class="f-btn" onclick="changePersonalSize(-2)" title="Küçült">➖</button>
+    <div style="display: flex; gap: 2px; margin-left: 10px;">
+        <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
+        <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
     </div>
 
-    <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')" style="width: 30px; justify-content: center;"><b>A</b></button>
-        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')" style="width: 30px; justify-content: center;"><i>I</i></button>
-        <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')" style="width: 30px; justify-content: center;"><u>U</u></button>
+    <div style="display: flex; gap: 2px; margin-left: 15px;">
+        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
+        <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 8px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:40px; height:25px; border:1px solid #222; cursor:pointer; background:none; padding:0;">
-        <span style="font-size:11px; color:#fff; font-weight:bold; text-shadow: 1px 1px #000;">RENK</span>
+    <div style="display: flex; align-items: center; gap: 5px; margin-left: 25px;">
+        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:35px; height:22px; border:1px solid #222; cursor:pointer; background:none;">
+        <span style="font-size:10px; color:#aaa; font-weight:bold;">RENK</span>
     </div>
 
-    <div style="flex: 1;"></div>
+    <div style="flex:1"></div>
 
-    <button class="f-btn" onclick="location.reload()" style="background: linear-gradient(to bottom, #d9534f, #c9302c);">👤 Çıkış</button>
+    <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
 </div>
