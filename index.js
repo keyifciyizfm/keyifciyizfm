@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let activeUsers = {}; 
 let bannedIPs = []; 
 
-// SENİN BİLGİLERİN
+// YÖNETİCİ BİLGİLERİ
 const adminNick = "Halil"; 
 const adminPass = "123456"; 
 
@@ -21,11 +21,10 @@ io.on('connection', (socket) => {
 
     socket.on('join', (data) => {
         if (bannedIPs.includes(userIP)) {
-            return socket.emit('auth error', 'Bu odaya girişiniz engellenmiştir!');
+            return socket.emit('auth error', 'Girişiniz engellenmiştir!');
         }
-
         if (data.nick === adminNick && data.password !== adminPass) {
-            return socket.emit('auth error', 'Yönetici şifresi hatalı!');
+            return socket.emit('auth error', 'Yönetici şifresi yanlış!');
         }
 
         socket.nick = data.nick || "Misafir";
@@ -39,28 +38,27 @@ io.on('connection', (socket) => {
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı.`, system: true });
     });
 
-    socket.on('admin command', (data) => {
-        if (socket.role !== 'Yönetici') return;
-        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
-        
-        if (targetId) {
-            if (data.action === 'kick') {
-                io.to(targetId).emit('force logout', 'Yönetici tarafından atıldınız!');
-                io.sockets.sockets.get(targetId).disconnect();
-            } else if (data.action === 'ban') {
-                bannedIPs.push(activeUsers[targetId].ip);
-                io.to(targetId).emit('force logout', 'Süresiz engellendiniz!');
-                io.sockets.sockets.get(targetId).disconnect();
-            }
-        }
-    });
-
     socket.on('chat message', (data) => {
         if (activeUsers[socket.id]) {
             io.emit('chat message', { 
                 user: socket.nick, role: socket.role, 
                 text: data.text, color: data.color, style: data.style 
             });
+        }
+    });
+
+    socket.on('admin command', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
+        if (targetId) {
+            if (data.action === 'kick') {
+                io.to(targetId).emit('force logout', 'Atıldınız!');
+                io.sockets.sockets.get(targetId).disconnect();
+            } else if (data.action === 'ban') {
+                bannedIPs.push(activeUsers[targetId].ip);
+                io.to(targetId).emit('force logout', 'Banlandınız!');
+                io.sockets.sockets.get(targetId).disconnect();
+            }
         }
     });
 
