@@ -35,29 +35,23 @@ function parseEmojis(text) {
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        // Şifre Kontrolü
         if (data.nick === masterNick && data.password !== masterPass) {
             return socket.emit('auth error', 'Hatalı Şifre!');
         }
-
         socket.nick = data.nick || "Misafir";
-        // Yöneticiye DJ rolü ve sarı renk veriyoruz
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
         socket.color = (socket.role === 'DJ') ? '#f1c40f' : (data.color || "#2ecc71");
         
         users[socket.id] = { nick: socket.nick, color: socket.color, role: socket.role };
         
-        socket.emit('login success');
+        socket.emit('login success', { role: socket.role });
         io.emit('user list', Object.values(users));
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    socket.on('change color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            socket.color = newColor;
-            io.emit('user list', Object.values(users));
-        }
+    // SES PAKETLERİNİ DAĞITMA
+    socket.on('audio-stream', (data) => {
+        socket.broadcast.emit('audio-receive', data);
     });
 
     socket.on('chat message', (data) => {
