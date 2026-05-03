@@ -1,51 +1,89 @@
-// index.html içindeki <script> kısmındaki chat message bölümünü bununla güncelle:
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Radyo Sohbet</title>
+    <style>
+        body { background: #1a1a1a; color: #ccc; font-family: sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #login-overlay { position: fixed; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; justify-content: center; align-items: center; }
+        #login-box { background: #333; padding: 30px; border-radius: 10px; border: 1px solid #555; text-align: center; width: 300px; }
+        .auth-input { width: 100%; padding: 10px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #666; }
+        #chat-container { width: 900px; height: 600px; background: #2a2a2a; border: 2px solid #444; display: flex; flex-direction: column; }
+        #messages { flex: 1; background: #000; overflow-y: auto; padding: 15px; }
+        #action-bar { background: #444; padding: 10px; display: flex; gap: 10px; align-items: center; }
+        .f-btn { background: linear-gradient(#888, #222); color: #fff; border: 1px solid #000; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+        .f-btn:hover { background: #555; }
+        form { display: flex; padding: 10px; background: #333; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; }
+    </style>
+</head>
+<body>
 
-var myRole = "";
+<div id="login-overlay">
+    <div id="login-box">
+        <h2 id="title">Giriş Yap</h2>
+        <input id="nick" class="auth-input" placeholder="Nick">
+        <input id="pass" class="auth-input" type="password" placeholder="Şifre">
+        <button class="f-btn" onclick="auth('login')">GİRİŞ</button>
+        <button class="f-btn" onclick="auth('reg')">KAYDOL</button>
+        <p id="msg" style="color:red; font-size:12px;"></p>
+    </div>
+</div>
 
-socket.on('chat message', (data) => {
-    var div = document.createElement('div');
-    div.style.marginBottom = "5px";
-    
-    if(data.system) {
-        div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
-    } else {
-        let s = data.style || {};
-        // Ünvan rozeti
-        let roleBadge = `<span style="font-size:9px; background:${data.color}; color:#000; padding:1px 4px; margin-right:5px; border-radius:2px; font-weight:bold;">${data.role.toUpperCase()}</span>`;
-        
-        div.innerHTML = `
-            ${roleBadge}
-            <span style="font-weight:bold; color:${data.color}; cursor:pointer;" onclick="openAdminMenu('${data.user}')">${data.user}:</span> 
-            <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'}; word-wrap: break-word;">
-                ${data.text}
-            </span>`;
+<div id="chat-container">
+    <div id="action-bar">
+        <button class="f-btn" onclick="alert('Emoji yakında!')">😊</button>
+        <button class="f-btn" onclick="location.reload()">Çıkış</button>
+    </div>
+    <div id="messages"></div>
+    <form onsubmit="send(event)">
+        <input id="input" autocomplete="off">
+        <button class="f-btn">GÖNDER</button>
+    </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var myRole = "";
+
+    function auth(type) {
+        var n = document.getElementById('nick').value;
+        var p = document.getElementById('pass').value;
+        if(type === 'reg') socket.emit('register', {nick: n, password: p});
+        else socket.emit('login', {nick: n, password: p});
     }
-    document.getElementById('messages').appendChild(div);
-    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-});
 
-// Yöneticiye özel tıklama menüsü
-function openAdminMenu(targetNick) {
-    if (myRole !== 'Yönetici') return; // Sadece yöneticiysen çalışır
-    if (targetNick === "Admin") return; // Kendini atamazsın
+    socket.on('auth error', (m) => document.getElementById('msg').innerText = m);
+    socket.on('auth success', (m) => alert(m));
+    socket.on('login success', (d) => { myRole = d.role; document.getElementById('login-overlay').style.display='none'; });
 
-    let choice = prompt(`Kullanıcı: ${targetNick}\n1: Odadan At (Kick)\n2: Engelle (Ban)\nSeçiminizi yazın (1 veya 2):`);
-    
-    if (choice === "1") {
-        socket.emit('admin command', { action: 'kick', targetNick: targetNick });
-    } else if (choice === "2") {
-        if(confirm(`${targetNick} tamamen engellensin mi?`)) {
-            socket.emit('admin command', { action: 'ban', targetNick: targetNick });
+    function send(e) {
+        e.preventDefault();
+        var i = document.getElementById('input');
+        socket.emit('chat message', {text: i.value, color: (myRole==='Yönetici'?'#ff4757':'#2ecc71')});
+        i.value = '';
+    }
+
+    socket.on('chat message', (d) => {
+        var div = document.createElement('div');
+        div.style.marginBottom = "5px";
+        if(d.system) div.innerHTML = `<small><i>${d.text}</i></small>`;
+        else {
+            div.innerHTML = `<b style="color:${d.color}; cursor:pointer" onclick="adm('${d.user}')">[${d.role}] ${d.user}:</b> <span style="color:${d.color}">${d.text}</span>`;
         }
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+
+    function adm(t) {
+        if(myRole !== 'Yönetici') return;
+        var c = prompt(t + " için: 1-At, 2-Ban");
+        if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: t});
+        if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: t});
     }
-}
 
-socket.on('login success', (data) => {
-    myRole = data.role;
-    document.getElementById('login-overlay').style.display = 'none';
-});
-
-socket.on('force logout', (msg) => {
-    alert(msg);
-    location.reload();
-});
+    socket.on('force logout', (m) => { alert(m); location.reload(); });
+</script>
+</body>
+</html>
