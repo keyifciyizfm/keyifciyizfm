@@ -7,31 +7,33 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Statik dosyaları public klasöründen servis et
 app.use(express.static(path.join(__dirname, 'public')));
 
-io.on('connection', (socket) => {
-    // Bağlanan kişiye 100-999 arası rastgele numara ver
-    const randomId = Math.floor(Math.random() * 899) + 100;
-    const userName = "Misafir-" + randomId;
+let users = {}; // Bağlı kullanıcıları burada tutacağız
 
-    console.log(`${userName} bağlandı.`);
+io.on('connection', (socket) => {
+    // Kullanıcı giriş yaptığında
+    socket.on('join', (nick) => {
+        socket.nick = nick || "Misafir-" + Math.floor(Math.random() * 100);
+        users[socket.id] = socket.nick;
+        
+        // Herkese güncel listeyi ve giriş mesajını gönder
+        io.emit('user list', Object.values(users));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} aramıza katıldı!`, system: true });
+    });
 
     socket.on('chat message', (msg) => {
-        // Gelen mesajı herkese yayınla
-        io.emit('chat message', { 
-            user: userName, 
-            text: msg 
-        });
+        io.emit('chat message', { user: socket.nick, text: msg });
     });
 
     socket.on('disconnect', () => {
-        console.log('Kullanıcı ayrıldı.');
+        if (socket.nick) {
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+            io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} ayrıldı.`, system: true });
+        }
     });
 });
 
-// Render portu veya yerel 3000 portu
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu aktif: Port ${PORT}`);
-});
+server.listen(PORT, () => console.log(`Radyo yayında: ${PORT}`));
