@@ -10,9 +10,9 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
-let bannedIPs = [];
 
-const masterNick = "Keyifciyiz_Fm";
+// YÖNETİCİ AYARLARI
+const masterNick = "Keyifciyiz_Fm"; 
 const masterPass = "123456";
 
 function parseEmojis(text) {
@@ -21,42 +21,58 @@ function parseEmojis(text) {
         ":joy:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg",
         ":heart:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg",
         ":fire:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg",
+        ":microphone:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg",
+        ":cool:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg",
+        ":thumbsup:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg",
         ":rose:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"
     };
     let newText = text;
     for (const [code, url] of Object.entries(emojiMap)) {
-        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:20px; height:20px; vertical-align:middle;">`);
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:20px; height:20px; vertical-align:middle; margin:0 2px;">`);
     }
     return newText;
 }
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        if (bannedIPs.includes(socket.handshake.address)) return socket.emit('auth error', 'Engellendiniz!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
+        // Şifre Kontrolü
+        if (data.nick === masterNick && data.password !== masterPass) {
+            return socket.emit('auth error', 'Hatalı Şifre!');
+        }
 
         socket.nick = data.nick || "Misafir";
+        // Yönetici rolünü DJ yapıyoruz
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
         socket.color = (socket.role === 'DJ') ? '#f1c40f' : '#2ecc71';
         
-        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color };
+        users[socket.id] = { nick: socket.nick, color: socket.color, role: socket.role };
+        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(users));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
+            const cleanText = parseEmojis(data.text); 
             io.emit('chat message', { 
-                user: users[socket.id].nick, 
-                role: users[socket.id].role,
-                text: parseEmojis(data.text), 
+                user: socket.nick, 
+                text: cleanText, 
                 color: data.color || users[socket.id].color, 
                 style: data.style 
             });
         }
     });
 
-    socket.on('disconnect', () => { delete users[socket.id]; io.emit('user list', Object.values(users)); });
+    socket.on('disconnect', () => {
+        if (users[socket.id]) {
+            const nick = users[socket.id].nick;
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
+        }
+    });
 });
 
-server.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Radyo Yayında!`));
