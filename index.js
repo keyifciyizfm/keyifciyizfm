@@ -10,59 +10,38 @@ const io = new Server(server, {
     cors: { origin: "*" } 
 });
 
+// Dosyaların okunması için kritik ayar
 app.use(express.static(path.join(__dirname, 'public')));
 
-let connectedUsers = {};
+let users = {};
 
 io.on('connection', (socket) => {
-    // Giriş işlemi
     socket.on('join', (data) => {
         const isAdmin = (data.password === "123");
-        connectedUsers[socket.id] = { 
-            username: data.username || "Misafir", 
+        users[socket.id] = { 
+            username: data.username, 
             role: isAdmin ? "ADMIN" : "USER",
             title: isAdmin ? "[DJ]" : "[Üye]",
-            muted: false,
-            id: socket.id 
+            id: socket.id,
+            format: { color: '#ff0000', bold: false, italic: false, size: 14 }
         };
-        socket.emit('authStatus', { role: connectedUsers[socket.id].role });
-        io.emit('updateUserList', Object.values(connectedUsers));
+        socket.emit('authStatus', { role: users[socket.id].role });
+        io.emit('updateUserList', Object.values(users));
     });
 
-    // Mesajlaşma
     socket.on('sendMessage', (data) => {
-        const user = connectedUsers[socket.id];
-        if(user && !user.muted) {
+        if(users[socket.id]) {
             io.emit('message', { 
-                user: `${user.title} ${user.username}`, 
+                user: `${users[socket.id].title} ${users[socket.id].username}`, 
                 text: data.text,
                 format: data.format 
             });
         }
     });
 
-    // Admin Yetkileri
-    socket.on('adminAction', (data) => {
-        if (connectedUsers[socket.id]?.role === "ADMIN") {
-            const target = connectedUsers[data.targetId];
-            if (!target) return;
-
-            if (data.action === "title") target.title = data.value;
-            if (data.action === "mute") target.muted = !target.muted;
-            if (data.action === "kick") io.to(data.targetId).emit('kicked');
-
-            io.emit('updateUserList', Object.values(connectedUsers));
-        }
-    });
-
-    // Ses İletimi
     socket.on('audioStream', (data) => { socket.broadcast.emit('audioPlay', data); });
-
-    socket.on('disconnect', () => {
-        delete connectedUsers[socket.id];
-        io.emit('updateUserList', Object.values(connectedUsers));
-    });
+    socket.on('disconnect', () => { delete users[socket.id]; io.emit('updateUserList', Object.values(users)); });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sistem aktif: Port ${PORT}`));
+server.listen(PORT, () => console.log(`Sunucu ${PORT} üzerinde çalışıyor`));
