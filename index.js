@@ -17,27 +17,22 @@ const adminPass = "123456";
 
 io.on('connection', (socket) => {
     const userIP = socket.handshake.address;
-
     socket.on('join', (data) => {
         if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
         if (data.nick === adminNick && data.password !== adminPass) return socket.emit('auth error', 'Hatalı Admin Şifresi!');
-
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === adminNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
-        
         activeUsers[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(activeUsers));
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı.`, system: true });
     });
-
     socket.on('chat message', (data) => {
         if (activeUsers[socket.id]) {
             io.emit('chat message', { user: socket.nick, role: socket.role, text: data.text, color: data.color, style: data.style });
         }
     });
-
     socket.on('admin command', (data) => {
         if (socket.role !== 'Yönetici') return;
         const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
@@ -52,13 +47,8 @@ io.on('connection', (socket) => {
             }
         }
     });
-
     socket.on('disconnect', () => {
-        if (activeUsers[socket.id]) {
-            delete activeUsers[socket.id];
-            io.emit('user list', Object.values(activeUsers));
-        }
+        if (activeUsers[socket.id]) { delete activeUsers[socket.id]; io.emit('user list', Object.values(activeUsers)); }
     });
 });
-
 server.listen(process.env.PORT || 3000);
