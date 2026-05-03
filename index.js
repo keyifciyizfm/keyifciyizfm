@@ -10,8 +10,6 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
-
-// YÖNETİCİ AYARLARI
 const masterNick = "Keyifciyiz_Fm"; 
 const masterPass = "123456";
 
@@ -35,39 +33,25 @@ function parseEmojis(text) {
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        // Şifre Kontrolü
         if (data.nick === masterNick && data.password !== masterPass) {
             return socket.emit('auth error', 'Hatalı Şifre!');
         }
-
         socket.nick = data.nick || "Misafir";
-        // Yöneticiye DJ rolü ve sarı renk veriyoruz
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
-        socket.color = (socket.role === 'DJ') ? '#f1c40f' : (data.color || "#2ecc71");
-        
+        socket.color = (socket.role === 'DJ') ? '#f1c40f' : "#2ecc71";
         users[socket.id] = { nick: socket.nick, color: socket.color, role: socket.role };
-        
-        socket.emit('login success');
+        socket.emit('login success', { role: socket.role });
         io.emit('user list', Object.values(users));
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    socket.on('change color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            socket.color = newColor;
-            io.emit('user list', Object.values(users));
-        }
+    // Ses Verisi Aktarımı
+    socket.on('audio-stream', (data) => {
+        socket.broadcast.emit('audio-receive', data);
     });
 
     socket.on('chat message', (data) => {
-        const cleanText = parseEmojis(data.text); 
-        io.emit('chat message', { 
-            user: socket.nick, 
-            text: cleanText, 
-            color: socket.color, 
-            style: data.style 
-        });
+        io.emit('chat message', { user: socket.nick, text: parseEmojis(data.text), color: socket.color, style: data.style });
     });
 
     socket.on('disconnect', () => {
