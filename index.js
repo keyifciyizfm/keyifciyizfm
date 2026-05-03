@@ -5,58 +5,29 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { 
-    maxHttpBufferSize: 1e8, // Büyük ses dosyaları için limit artırıldı
-    cors: { origin: "*" } 
-});
+const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-let users = {};
-let currentStreamer = null;
+app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    socket.on('join', (data) => {
-        const isAdmin = (data.username === "keyifciyizfm" && data.password === "Keyif123");
-        users[socket.id] = { 
-            username: data.username, 
-            role: isAdmin ? "ADMIN" : "USER",
-            title: isAdmin ? "[DJ]" : "[Üye]",
-            id: socket.id 
-        };
-        socket.emit('authStatus', { role: users[socket.id].role });
-        io.emit('updateUserList', Object.values(users));
+    // Yeni kullanıcı girişi
+    socket.on('join', (username) => {
+        socket.username = username;
+        io.emit('chat message', { user: 'SİSTEM', text: `${username} yayına bağlandı.`, type: 'system' });
     });
 
-    // Ses Yayını (Müzik + Mikrofon)
-    socket.on('audioStream', (data) => {
-        if (users[socket.id]?.role === "ADMIN") {
-            socket.broadcast.emit('audioPlay', data);
-        }
+    // Mesajlaşma
+    socket.on('chat message', (data) => {
+        io.emit('chat message', data);
     });
 
-    socket.on('stopStream', () => {
-        if (users[socket.id]?.role === "ADMIN") {
-            socket.broadcast.emit('audioStop');
-        }
-    });
-
-    socket.on('sendMessage', (data) => {
-        const user = users[socket.id];
-        if(user) {
-            io.emit('message', { 
-                user: `${user.title} ${user.username}`, 
-                text: data.text,
-                format: data.format 
-            });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        delete users[socket.id];
-        io.emit('updateUserList', Object.values(users));
+    // Admin komutları (Yayın durdurma vb.)
+    socket.on('admin command', (cmd) => {
+        io.emit('system command', cmd);
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Profesyonel Stüdyo Hazır!`));
+server.listen(PORT, () => {
+    console.log(`Sunucu aktif: http://localhost:${PORT}`);
+});
