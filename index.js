@@ -1,80 +1,107 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sohbet - Flatcast Style Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        .user-item { padding: 5px; border-bottom: 1px solid #222; cursor: pointer; }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+        /* SADE YÖNETİM MENÜSÜ */
+        #admin-menu { 
+            display: none; position: absolute; background: #333; border: 1px solid #f1c40f; 
+            padding: 5px; z-index: 2000; width: 140px; box-shadow: 0 5px 15px #000; 
+        }
+        .menu-item { padding: 10px; color: white; font-size: 11px; cursor: pointer; border-bottom: 1px solid #444; }
+        .menu-item:last-child { border-bottom: none; }
+        .menu-item:hover { background: #f1c40f; color: black; }
+    </style>
+</head>
+<body>
 
-app.use(express.static(path.join(__dirname, 'public')));
+<div id="login-overlay">
+    <div id="login-box">
+        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%;">
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%;"></div>
+        <button class="f-btn" onclick="joinChat()">BAĞLAN</button>
+    </div>
+</div>
 
-let users = {}; 
-const masterNick = "Keyifciyiz_Fm"; 
-const masterPass = "123456";
+<div id="admin-menu">
+    <div class="menu-item" onclick="execAction('mute')">🔇 Sustur/Aç</div>
+    <div class="menu-item" onclick="execAction('kick')" style="color:#e74c3c;">🚫 Odadan At</div>
+</div>
 
-function parseEmojis(text) {
-    const emojiMap = {
-        ":smile:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg",
-        ":joy:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg",
-        ":heart:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg",
-        ":fire:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg",
-        ":microphone:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg",
-        ":cool:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg",
-        ":thumbsup:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg",
-        ":rose:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"
-    };
-    let newText = text;
-    for (const [code, url] of Object.entries(emojiMap)) {
-        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:20px; height:20px; vertical-align:middle; margin:0 2px;">`);
+<div id="chat-container">
+    <div id="top-gradient"></div>
+    <div id="action-bar"><div style="flex: 1;"></div><button class="f-btn" onclick="location.reload()">👤 Çıkış</button></div>
+    <div id="main-area">
+        <div id="messages"></div>
+        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
+    </div>
+    <form id="form" onsubmit="sendM(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
+        <input id="input" autocomplete="off" style="flex:1; background:#000; color:#fff; padding:10px; border:1px solid #555;" />
+        <button class="f-btn">GÖNDER</button>
+    </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var myRole = 'Dinleyici';
+    var selId = null;
+
+    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
+    function joinChat() { socket.emit('join', { nick: document.getElementById('nick-input').value, password: document.getElementById('pass-input').value }); }
+
+    socket.on('login success', (data) => {
+        document.getElementById('login-overlay').style.display = 'none';
+        myRole = data.role;
+    });
+
+    socket.on('user list', (list) => {
+        const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
+        list.forEach(u => {
+            const item = document.createElement('div');
+            item.className = 'user-item'; item.style.color = u.color;
+            item.innerHTML = `👤 ${u.nick} ${u.role === 'DJ' ? '<small>(DJ)</small>' : ''}`;
+            item.onclick = (e) => {
+                if(myRole === 'DJ' && u.nick !== "Keyifciyiz_Fm") { // Kendine menü açılmasın
+                    selId = u.id;
+                    const menu = document.getElementById('admin-menu');
+                    menu.style.display = 'block'; 
+                    menu.style.left = e.pageX + "px"; 
+                    menu.style.top = e.pageY + "px";
+                }
+            };
+            uDiv.appendChild(item);
+        });
+    });
+
+    function execAction(act) {
+        socket.emit('admin-action', { action: act, targetId: selId });
+        document.getElementById('admin-menu').style.display = 'none';
     }
-    return newText;
-}
 
-io.on('connection', (socket) => {
-    socket.on('join', (data) => {
-        if (data.nick === masterNick && data.password !== masterPass) {
-            return socket.emit('auth error', 'Hatalı Şifre!');
-        }
-        socket.nick = data.nick || "Misafir";
-        socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
-        socket.color = (socket.role === 'DJ') ? '#f1c40f' : (data.color || "#2ecc71");
-        socket.isMuted = false;
-        
-        users[socket.id] = { id: socket.id, nick: socket.nick, color: socket.color, role: socket.role };
-        
-        socket.emit('login success', { role: socket.role });
-        io.emit('user list', Object.values(users));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
+    window.onclick = (e) => { if(!e.target.closest('.user-item')) document.getElementById('admin-menu').style.display = 'none'; };
+
+    function sendM(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; } }
+    socket.on('chat message', (d) => {
+        const div = document.createElement('div');
+        div.innerHTML = d.system ? `<i style="color:#777;">${d.text}</i>` : `<b style="color:${d.color}">${d.user}:</b> <span>${d.text}</span>`;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
-
-    socket.on('chat message', (data) => {
-        if (socket.isMuted) return socket.emit('chat message', { user: 'SİSTEM', text: 'Susturuldunuz!', system: true });
-        const cleanText = parseEmojis(data.text); 
-        io.emit('chat message', { user: socket.nick, text: cleanText, color: socket.color, style: data.style });
-    });
-
-    socket.on('admin-action', (data) => {
-        if (socket.role !== 'DJ') return;
-        const target = io.sockets.sockets.get(data.targetId);
-        if (!target) return;
-
-        if (data.action === 'kick') target.disconnect();
-        if (data.action === 'mute') {
-            target.isMuted = !target.isMuted;
-            target.emit('chat message', { user: 'SİSTEM', text: target.isMuted ? 'Susturuldunuz.' : 'Konuşabilirsiniz.', system: true });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        if (users[socket.id]) {
-            const nick = users[socket.id].nick;
-            delete users[socket.id];
-            io.emit('user list', Object.values(users));
-            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo Yayında!`));
+</script>
+</body>
+</html>
