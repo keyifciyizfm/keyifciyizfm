@@ -1,13 +1,11 @@
 {
-  "name": "chat-uygulamasi",
+  "name": "keyifciyizfm",
   "version": "1.0.0",
-  "description": "Basit Sohbet Odası",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.7.2",
+    "bcryptjs": "^2.4.3"
   }
 }
