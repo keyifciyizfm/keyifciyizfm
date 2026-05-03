@@ -2,130 +2,108 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Sohbet - Flatcast Style</title>
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.2/css/all.css">
+    <title>Sohbet - Flatcast Style Pro</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 4px; }
-        
-        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; box-shadow: 0 0 30px #000; border-radius: 5px; }
-        
-        #top-gradient { height: 14px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); border-bottom: 1px solid #000; }
-        
-        /* Action Bar Buton Tasarımı */
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; }
+        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 8px; display: flex; gap: 8px; border-bottom: 2px solid #222; align-items: center; }
-        .f-btn { 
-            background: linear-gradient(to bottom, #777, #333); 
-            border: 1px solid #111; 
-            color: #fff; 
-            padding: 5px 12px; 
-            font-size: 11px; 
-            cursor: pointer; 
-            border-radius: 3px; 
-            display: flex; 
-            align-items: center; 
-            gap: 6px;
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
-        }
-        .f-btn i { font-size: 13px; min-width: 15px; text-align: center; }
-        
-        .btn-blue i { color: #5bc0de; }
-        .btn-yellow i { color: #f1c40f; }
-
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        
-        .msg-line { margin-bottom: 6px; border-bottom: 1px solid #1a1a1a; padding-bottom: 3px; }
-        .nick { font-weight: bold; color: #2ecc71; margin-right: 5px; }
-        .user-item { color: #5bc0de; padding: 4px 0; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 8px; }
-        
-        #input-area-form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
-        #input-area-form input { flex: 1; background: #000; border: 1px solid #555; color: #fff; padding: 10px; border-radius: 3px; outline: none; }
+        .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div id="login-box">
-        <i class="fa-solid fa-radio" style="font-size: 40px; color: #2ecc71; margin-bottom: 15px;"></i>
-        <h3 style="color:#fff; margin-bottom: 15px;">Sohbet Girişi</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." maxlength="15" style="background:#000; color:#fff; border:1px solid #555; padding:10px; margin-bottom:15px; text-align:center; display:block; width:220px;">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Sohbet Girişi</h3>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." maxlength="15" style="padding:10px; margin-bottom:10px; display:block; width:100%;"><br>
         <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
     </div>
 </div>
 
 <div id="chat-container">
     <div id="top-gradient"></div>
-    
     <div id="action-bar">
-        <button class="f-btn"><i class="fa-solid fa-message"></i> Chat</button>
-        <button class="f-btn"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-        <button class="f-btn"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        <button class="f-btn">💬 Chat</button>
+        <button class="f-btn" onclick="changeSize(2)">➕ Büyüt</button>
+        <button class="f-btn" onclick="changeSize(-2)">➖ Küçült</button>
         <div style="flex:1"></div>
-        <button class="f-btn btn-yellow"><i class="fa-solid fa-palette"></i> Color</button>
-        <button class="f-btn"><i class="fa-solid fa-volume-high"></i> Sound</button>
-        <button class="f-btn btn-blue"><i class="fa-solid fa-right-to-bracket"></i> Login</button>
+        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:30px; height:25px; border:none; cursor:pointer; background:none;">
+        <span style="font-size:10px;">RENK</span>
+        <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
     </div>
 
     <div id="main-area">
         <div id="messages"></div>
-        <div id="user-list">
-            <b style="color:#f1c40f"><i class="fa-solid fa-user-group"></i> Dinleyiciler</b>
-            <hr style="border:0; border-top:1px solid #444; margin:10px 0;">
-            <div id="users"></div>
-        </div>
+        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
 
-    <form id="form" id="input-area-form">
-        <input id="input" autocomplete="off" placeholder="Mesajınızı yazın..." />
-        <button type="submit" class="f-btn">GÖNDER <i class="fa-solid fa-paper-plane"></i></button>
+    <form id="form" style="display:flex; padding:12px; background:#3b3b3b; gap:8px;">
+        <input id="input" autocomplete="off" placeholder="Mesajınız..." style="flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px;" />
+        <button type="submit" class="f-btn">GÖNDER</button>
     </form>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    
+    var currentSize = 13;
+
     function joinChat() {
         var nick = document.getElementById('nick-input').value;
         if(nick.trim() != "") {
-            socket.emit('join', nick);
+            socket.emit('join', { nick: nick });
             document.getElementById('login-overlay').style.display = 'none';
         }
+    }
+
+    function changeSize(amt) {
+        currentSize += amt;
+        if(currentSize < 10) currentSize = 10;
+        if(currentSize > 30) currentSize = 30;
+        alert("Yazı boyutu: " + currentSize + "px");
+    }
+
+    function changeColor(color) {
+        socket.emit('change color', color);
     }
 
     document.getElementById('form').addEventListener('submit', function(e) {
         e.preventDefault();
         var input = document.getElementById('input');
         if (input.value) {
-            socket.emit('chat message', input.value);
+            socket.emit('chat message', { text: input.value, size: currentSize });
             input.value = '';
         }
     });
 
     socket.on('chat message', function(data) {
         var div = document.createElement('div');
-        div.className = 'msg-line';
+        div.style.marginBottom = "5px";
         if(data.system) {
             div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
         } else {
-            div.innerHTML = `<span class="nick">${data.user}:</span> <span style="color:#eee">${data.text}</span>`;
+            div.innerHTML = `<span style="font-weight:bold; color:${data.color}">${data.user}:</span> <span style="color:#eee; font-size:${data.size}px">${data.text}</span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
-    socket.on('user list', function(userNames) {
+    socket.on('user list', function(userObjects) {
         var userDiv = document.getElementById('users');
         userDiv.innerHTML = '';
-        userNames.forEach(function(u) {
+        userObjects.forEach(function(u) {
             var item = document.createElement('div');
             item.className = 'user-item';
-            item.innerHTML = '<i class="fa-solid fa-circle-user"></i> ' + u;
+            item.style.color = u.color;
+            item.innerHTML = '👤 ' + u.nick;
             userDiv.appendChild(item);
         });
     });
