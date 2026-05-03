@@ -6,49 +6,49 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
-    maxHttpBufferSize: 1e8,
+    maxHttpBufferSize: 1e8, // Büyük ses dosyaları için limit artırıldı
     cors: { origin: "*" } 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {};
+let currentStreamer = null;
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        // İSTEDİĞİN ADMİN BİLGİLERİ
         const isAdmin = (data.username === "keyifciyizfm" && data.password === "Keyif123");
-        
         users[socket.id] = { 
             username: data.username, 
             role: isAdmin ? "ADMIN" : "USER",
-            title: isAdmin ? "[ADMIN]" : "[Üye]",
-            muted: false,
+            title: isAdmin ? "[DJ]" : "[Üye]",
             id: socket.id 
         };
-
         socket.emit('authStatus', { role: users[socket.id].role });
         io.emit('updateUserList', Object.values(users));
     });
 
+    // Ses Yayını (Müzik + Mikrofon)
+    socket.on('audioStream', (data) => {
+        if (users[socket.id]?.role === "ADMIN") {
+            socket.broadcast.emit('audioPlay', data);
+        }
+    });
+
+    socket.on('stopStream', () => {
+        if (users[socket.id]?.role === "ADMIN") {
+            socket.broadcast.emit('audioStop');
+        }
+    });
+
     socket.on('sendMessage', (data) => {
         const user = users[socket.id];
-        if(user && !user.muted) {
+        if(user) {
             io.emit('message', { 
                 user: `${user.title} ${user.username}`, 
                 text: data.text,
                 format: data.format 
             });
-        }
-    });
-
-    socket.on('audioStream', (data) => { socket.broadcast.emit('audioPlay', data); });
-    
-    socket.on('adminAction', (data) => {
-        if (users[socket.id]?.role === "ADMIN") {
-            if (data.action === "kick") io.to(data.targetId).emit('kicked');
-            if (data.action === "mute") users[data.targetId].muted = !users[data.targetId].muted;
-            io.emit('updateUserList', Object.values(users));
         }
     });
 
@@ -59,4 +59,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo aktif!`));
+server.listen(PORT, () => console.log(`Profesyonel Stüdyo Hazır!`));
