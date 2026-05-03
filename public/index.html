@@ -1,160 +1,24 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Sohbet - Flatcast Style Pro</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; }
-        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; }
-        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        #action-bar { background: #4a4a4a; padding: 8px; display: flex; gap: 8px; border-bottom: 2px solid #222; align-items: center; }
-        
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
-        .f-btn.active { background: #2ecc71; color: #000; } /* Aktif olduğunda renk değiştirsin */
-
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
-        #input { flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px; }
-    </style>
-</head>
-<body>
-
-<div id="login-overlay">
-    <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Sohbet Girişi</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." maxlength="15" style="padding:10px; margin-bottom:10px; display:block; width:100%;"><br>
-        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
-    </div>
-</div>
-
-<div id="chat-container">
-    <div id="top-gradient"></div>
-    <div id="action-bar">
-        <button class="f-btn">💬 Chat</button>
-        <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
-        <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
-        
-        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
-        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-        <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
-
-        <div style="flex:1"></div>
-        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:40px; height:25px; border:none; cursor:pointer; background:none;">
-        <span style="font-size:10px;">RENK</span>
-        <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
-    </div>
-
-    <div id="main-area">
-        <div id="messages"></div>
-        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
-    </div>
-
-    <form id="form" style="display:flex; padding:12px; background:#3b3b3b; gap:8px;">
-        <input id="input" autocomplete="off" placeholder="Mesajınız..." />
-        <button type="submit" class="f-btn">GÖNDER</button>
-    </form>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    var socket = io();
-    var personalFontSize = 13;
-    var selectedColor = "#2ecc71";
+<div id="action-bar" style="background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222;">
     
-    // Stil durumlarını tutan değişkenler
-    var styles = { bold: false, italic: false, underline: false };
+    <button class="f-btn">💬 Chat</button>
+    
+    <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
+        <button class="f-btn" onclick="changePersonalSize(2)" title="Büyüt">➕</button>
+        <button class="f-btn" onclick="changePersonalSize(-2)" title="Küçült">➖</button>
+    </div>
 
-    function joinChat() {
-        var nick = document.getElementById('nick-input').value;
-        if(nick.trim() != "") {
-            socket.emit('join', { nick: nick });
-            document.getElementById('login-overlay').style.display = 'none';
-        }
-    }
+    <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
+        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')" style="width: 30px; justify-content: center;"><b>A</b></button>
+        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')" style="width: 30px; justify-content: center;"><i>I</i></button>
+        <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')" style="width: 30px; justify-content: center;"><u>U</u></button>
+    </div>
 
-    function changePersonalSize(amt) {
-        personalFontSize += amt;
-        if(personalFontSize < 10) personalFontSize = 10;
-        document.getElementById('messages').style.fontSize = personalFontSize + "px";
-        document.getElementById('input').style.fontSize = personalFontSize + "px";
-    }
+    <div style="display: flex; align-items: center; gap: 8px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
+        <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:40px; height:25px; border:1px solid #222; cursor:pointer; background:none; padding:0;">
+        <span style="font-size:11px; color:#fff; font-weight:bold; text-shadow: 1px 1px #000;">RENK</span>
+    </div>
 
-    // Stil Aç/Kapat Fonksiyonu
-    function toggleStyle(type) {
-        styles[type] = !styles[type];
-        var btn = document.getElementById('btn-' + type);
-        
-        if(styles[type]) {
-            btn.classList.add('active');
-            if(type === 'bold') document.getElementById('input').style.fontWeight = 'bold';
-            if(type === 'italic') document.getElementById('input').style.fontStyle = 'italic';
-            if(type === 'underline') document.getElementById('input').style.textDecoration = 'underline';
-        } else {
-            btn.classList.remove('active');
-            if(type === 'bold') document.getElementById('input').style.fontWeight = 'normal';
-            if(type === 'italic') document.getElementById('input').style.fontStyle = 'normal';
-            if(type === 'underline') document.getElementById('input').style.textDecoration = 'none';
-        }
-    }
+    <div style="flex: 1;"></div>
 
-    function changeColor(color) {
-        selectedColor = color;
-        document.getElementById('input').style.color = color;
-        socket.emit('change color', color);
-    }
-
-    document.getElementById('form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var input = document.getElementById('input');
-        if (input.value) {
-            socket.emit('chat message', { 
-                text: input.value, 
-                color: selectedColor,
-                style: styles // Mevcut stilleri de gönderiyoruz
-            });
-            input.value = '';
-        }
-    });
-
-    socket.on('chat message', function(data) {
-        var div = document.createElement('div');
-        div.style.marginBottom = "5px";
-        
-        if(data.system) {
-            div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
-        } else {
-            // Gelen stili uygula
-            let s = data.style || {};
-            let fontWeight = s.bold ? 'bold' : 'normal';
-            let fontStyle = s.italic ? 'italic' : 'normal';
-            let textDecor = s.underline ? 'underline' : 'none';
-
-            div.innerHTML = `
-                <span style="font-weight:bold; color:${data.color}">${data.user}:</span> 
-                <span style="color:${data.color}; font-weight:${fontWeight}; font-style:${fontStyle}; text-decoration:${textDecor}; word-wrap: break-word;">
-                    ${data.text}
-                </span>`;
-        }
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    });
-
-    socket.on('user list', function(userObjects) {
-        var userDiv = document.getElementById('users');
-        userDiv.innerHTML = '';
-        userObjects.forEach(function(u) {
-            var item = document.createElement('div');
-            item.className = 'user-item';
-            item.style.color = u.color;
-            item.innerHTML = '👤 ' + u.nick;
-            userDiv.appendChild(item);
-        });
-    });
-</script>
-</body>
-</html>
+    <button class="f-btn" onclick="location.reload()" style="background: linear-gradient(to bottom, #d9534f, #c9302c);">👤 Çıkış</button>
+</div>
