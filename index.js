@@ -52,7 +52,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('admin command', (data) => {
-        if (socket.role !== 'Yönetici' && socket.role !== 'Admin') return;
+        if (socket.role !== 'Yönetici') return;
         const targetId = Object.keys(users).find(id => users[id].nick === data.targetNick);
         if (!targetId) return;
 
@@ -63,11 +63,6 @@ io.on('connection', (socket) => {
             bannedIPs.push(users[targetId].ip);
             io.to(targetId).emit('force logout', 'Banlandınız!');
             io.sockets.sockets.get(targetId)?.disconnect();
-        } else if (data.action === 'make_dj') {
-            users[targetId].role = 'DJ';
-            const tSock = io.sockets.sockets.get(targetId);
-            if(tSock) tSock.role = 'DJ';
-            io.emit('user list', Object.values(users));
         }
     });
 
@@ -77,7 +72,6 @@ io.on('connection', (socket) => {
             const cleanText = parseEmojis(data.text);
             io.emit('chat message', { 
                 user: u.nick, 
-                role: u.role,
                 text: cleanText, 
                 color: data.color || u.color, 
                 style: data.style 
@@ -93,6 +87,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000, () => {
-    console.log("Sunucu 3000 portunda aktif!");
-});
+server.listen(process.env.PORT || 3000);
