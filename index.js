@@ -22,11 +22,12 @@ io.on('connection', (socket) => {
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
         socket.color = (socket.role === 'DJ') ? '#f1c40f' : (data.color || "#2ecc71");
         users[socket.id] = { nick: socket.nick, color: socket.color, role: socket.role };
+        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(users));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
+    // DJ'den gelen ses paketini yakala ve herkese (broadcast) gönder
     socket.on('audio-stream', (data) => {
         socket.broadcast.emit('audio-receive', data);
     });
@@ -42,10 +43,8 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (users[socket.id]) {
-            const nick = users[socket.id].nick;
             delete users[socket.id];
             io.emit('user list', Object.values(users));
-            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
         }
     });
 });
