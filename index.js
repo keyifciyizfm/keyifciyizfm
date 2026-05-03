@@ -17,69 +17,54 @@ let registeredUsers = JSON.parse(fs.readFileSync(dbFile));
 let activeUsers = {}; 
 let bannedUsers = []; 
 
-// --- YÖNETİCİ VE YETKİ AYARLARI ---
-const adminConfig = {
-    nick: "Admin",    // Buraya kendi kullanıcı adını yaz
-    pass: "12345"     // Buraya kendi şifreni yaz
-};
-
-const roles = {
-    [adminConfig.nick]: 'Yönetici',
-    'DJ_Aysima': 'DJ',
-    'Mod_Rehber': 'Sorumlu'
-};
+// YETKİ AYARLARI
+const adminNick = "Halil"; // Kendi adını buraya yaz
+const adminPass = "123456"; // Kendi şifreni buraya yaz
 
 io.on('connection', (socket) => {
     
     socket.on('register', (data) => {
-        if (registeredUsers[data.nick] || data.nick === adminConfig.nick) {
-            socket.emit('auth error', 'Bu kullanıcı adı zaten alınmış!');
+        if (registeredUsers[data.nick] || data.nick === adminNick) {
+            socket.emit('auth error', 'Bu isim kullanılamaz!');
         } else {
             registeredUsers[data.nick] = { password: data.password };
             fs.writeFileSync(dbFile, JSON.stringify(registeredUsers));
-            socket.emit('auth success', 'Kayıt başarılı!');
+            socket.emit('auth success', 'Kayıt başarılı! Giriş yapın.');
         }
     });
 
     socket.on('login', (data) => {
-        if (bannedUsers.includes(data.nick)) {
-            return socket.emit('auth error', 'Girişiniz engellendi!');
-        }
+        if (bannedUsers.includes(data.nick)) return socket.emit('auth error', 'Engellendiniz!');
 
-        let isAdmin = (data.nick === adminConfig.nick && data.password === adminConfig.pass);
+        let isAdmin = (data.nick === adminNick && data.password === adminPass);
         let user = registeredUsers[data.nick];
 
         if (isAdmin || (user && user.password === data.password)) {
             socket.nick = data.nick;
-            socket.role = roles[data.nick] || 'Dinleyici';
-            // Yönetici ise rengi kırmızı olsun
-            socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+            socket.role = isAdmin ? 'Yönetici' : 'Dinleyici';
+            socket.color = isAdmin ? '#ff4757' : '#2ecc71';
             
             activeUsers[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color };
             
             socket.emit('login success', { role: socket.role });
             io.emit('user list', Object.values(activeUsers));
-            io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} (${socket.role}) giriş yaptı!`, system: true });
+            io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} odaya girdi.`, system: true });
         } else {
-            socket.emit('auth error', 'Hatalı kullanıcı adı veya şifre!');
+            socket.emit('auth error', 'Hatalı giriş bilgileri!');
         }
     });
 
-    // --- YÖNETİCİ KOMUTLARI (Kick/Ban) ---
     socket.on('admin command', (data) => {
         if (socket.role !== 'Yönetici') return;
-
-        const targetSocketId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
-        
-        if (data.action === 'kick' && targetSocketId) {
-            io.to(targetSocketId).emit('force logout', 'Yönetici tarafından odadan atıldınız!');
-            io.sockets.sockets.get(targetSocketId).disconnect();
-        } 
-        else if (data.action === 'ban' && data.targetNick !== adminConfig.nick) {
-            bannedUsers.push(data.targetNick);
-            if (targetSocketId) {
-                io.to(targetSocketId).emit('force logout', 'Süresiz engellendiniz!');
-                io.sockets.sockets.get(targetSocketId).disconnect();
+        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
+        if (targetId) {
+            if (data.action === 'kick') {
+                io.to(targetId).emit('force logout', 'Atıldınız!');
+                io.sockets.sockets.get(targetId).disconnect();
+            } else if (data.action === 'ban') {
+                bannedUsers.push(data.targetNick);
+                io.to(targetId).emit('force logout', 'Banlandınız!');
+                io.sockets.sockets.get(targetId).disconnect();
             }
         }
     });
@@ -87,11 +72,8 @@ io.on('connection', (socket) => {
     socket.on('chat message', (data) => {
         if (activeUsers[socket.id]) {
             io.emit('chat message', { 
-                user: socket.nick, 
-                role: socket.role, 
-                text: data.text, 
-                color: data.color, 
-                style: data.style 
+                user: socket.nick, role: socket.role, 
+                text: data.text, color: data.color, style: data.style 
             });
         }
     });
@@ -104,5 +86,4 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Yönetici Paneli Aktif!`));
+server.listen(process.env.PORT || 3000);
