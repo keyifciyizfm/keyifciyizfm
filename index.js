@@ -7,19 +7,31 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Public klasörünü dışarı açıyoruz
+// Statik dosyaları public klasöründen servis et
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
-    // Yeni biri bağlandığında rastgele bir Nick verelim (şimdilik)
-    const userName = "Misafir-" + Math.floor(Math.random() * 1000);
-    
+    // Bağlanan kişiye 100-999 arası rastgele numara ver
+    const randomId = Math.floor(Math.random() * 899) + 100;
+    const userName = "Misafir-" + randomId;
+
+    console.log(`${userName} bağlandı.`);
+
     socket.on('chat message', (msg) => {
-        io.emit('chat message', { user: userName, text: msg });
+        // Gelen mesajı herkese yayınla
+        io.emit('chat message', { 
+            user: userName, 
+            text: msg 
+        });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Kullanıcı ayrıldı.');
     });
 });
 
+// Render portu veya yerel 3000 portu
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Sunucu ${PORT} portunda hazır!`);
+    console.log(`Sunucu aktif: Port ${PORT}`);
 });
