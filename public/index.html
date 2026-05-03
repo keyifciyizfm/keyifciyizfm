@@ -2,72 +2,53 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keyifciyiz FM - Sohbet</title>
-    <link rel="stylesheet" href="style.css"> <style>
-        /* Temel Tasarım (Karagül FM Esintili) */
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0b0b; color: white; height: 100vh; overflow: hidden; }
-        
-        /* Giriş ve Kayıt Paneli */
-        #auth-screen { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .auth-card { background: #1a1a1a; padding: 30px; border-radius: 15px; border: 1px solid #ff6600; text-align: center; width: 300px; }
-        .auth-card input { width: 90%; padding: 10px; margin: 10px 0; background: #333; border: 1px solid #444; color: white; border-radius: 5px; }
-        .auth-card button { width: 100%; padding: 10px; background: #ff6600; border: none; color: white; font-weight: bold; cursor: pointer; border-radius: 5px; }
-        
-        /* Ana Uygulama Yapısı */
-        #main-app { display: none; display: flex; flex-direction: column; height: 100vh; }
-        .top-bar { background: #111; padding: 10px; display: flex; justify-content: space-between; border-bottom: 1px solid #333; }
-        
-        .content { display: flex; flex: 1; position: relative; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.6); z-index: 2; }
-        #messages { flex: 1; overflow-y: auto; padding: 15px; }
-        
-        .user-list { width: 200px; background: #151515; border-left: 1px solid #333; padding: 10px; }
-        
-        /* Sağdaki Arka Plan Görseli */
-        .side-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 40%; background: url('https://via.placeholder.com/600x800') no-repeat center; background-size: cover; opacity: 0.5; z-index: 1; pointer-events: none; }
-
-        /* Admin Menüsü */
-        .admin-controls { font-size: 10px; margin-left: 10px; }
-        .btn-kick { color: #ff4444; cursor: pointer; }
-        .btn-dj { color: #44aaff; cursor: pointer; }
+    <title>Sohbet - Flatcast Style</title>
+    <style>
+        body { background: #222; color: #00ff00; font-family: Tahoma, sans-serif; display: flex; justify-content: center; padding-top: 50px; }
+        #chat-container { width: 800px; height: 500px; background: #333; border: 3px solid #555; display: flex; flex-direction: column; }
+        #top-bar { background: linear-gradient(to right, green, yellow, red); height: 10px; width: 100%; }
+        #main-area { display: flex; flex: 1; overflow: hidden; }
+        #messages { flex: 3; background: #000; margin: 10px; padding: 10px; overflow-y: auto; border: 1px solid #444; }
+        #user-list { flex: 1; background: #111; margin: 10px 10px 10px 0; border: 1px solid #444; padding: 10px; font-size: 14px; }
+        #input-area { padding: 10px; background: #444; display: flex; }
+        input { flex: 1; background: #000; color: #fff; border: 1px solid #777; padding: 5px; }
+        button { background: #666; color: white; border: 1px solid #999; margin-left: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-
-    <div id="auth-screen">
-        <div class="auth-card">
-            <h2 id="auth-title">Kayıt Ol</h2>
-            <input type="text" id="nick-input" placeholder="Rumuz (Nick)">
-            <input type="password" id="pass-input" placeholder="Şifre">
-            <button onclick="handleAuth()" id="main-auth-btn">Kayıt Ol</button>
-            <p style="font-size: 12px; margin-top: 15px; cursor: pointer;" onclick="toggleAuthMode()" id="toggle-link">Zaten hesabım var</p>
+    <div id="chat-container">
+        <div id="top-bar"></div>
+        <div id="main-area">
+            <div id="messages"></div>
+            <div id="user-list"><b>Kullanıcılar:</b><br><br>• Sen</div>
         </div>
+        <form id="form" id="input-area" style="display:flex; padding: 10px;">
+            <input id="input" autocomplete="off" placeholder="Mesajınızı yazın..." />
+            <button>Gönder</button>
+        </form>
     </div>
 
-    <div id="main-app">
-        <div class="top-bar">
-            <span>● Keyifciyiz FM - Canlı</span>
-            <span id="user-display"></span>
-        </div>
-        
-        <div class="content">
-            <div class="chat-area">
-                <div id="messages"></div>
-                <div style="padding: 15px; background: #111; display: flex;">
-                    <input type="text" id="msg-input" style="flex: 1; padding: 10px; background: #222; border: 1px solid #333; color: white;" placeholder="Mesaj yazın...">
-                    <button onclick="sendMessage()" style="padding: 10px 20px; background: #ff6600; border: none; color: white;">Gönder</button>
-                </div>
-            </div>
-            
-            <div class="user-list" id="online-users">
-                <h4>Online Dostlar</h4>
-                </div>
-            
-            <div class="side-bg"></div>
-        </div>
-    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var socket = io();
+        var form = document.getElementById('form');
+        var input = document.getElementById('input');
+        var messages = document.getElementById('messages');
 
-    <script src="index.js"></script>
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', input.value);
+                input.value = '';
+            }
+        });
+
+        socket.on('chat message', function(data) {
+            var item = document.createElement('div');
+            item.innerHTML = `<strong>${data.user}:</strong> ${data.text}`;
+            messages.appendChild(item);
+            messages.scrollTop = messages.scrollHeight;
+        });
+    </script>
 </body>
 </html>
