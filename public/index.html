@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Sohbet - Flatcast Style Pro</title>
+    <title>Sohbet - Kişisel Görünüm Paneli</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
@@ -13,12 +13,13 @@
         #action-bar { background: #4a4a4a; padding: 8px; display: flex; gap: 8px; border-bottom: 2px solid #222; align-items: center; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; }
+        
+        /* ÖNEMLİ: Mesajların genel boyutu için id ekledik */
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
+        
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
-        
-        /* Mesaj kutusu için anlık değişim stili */
-        #input { flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px; transition: font-size 0.1s ease; }
+        #input { flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px; }
     </style>
 </head>
 <body>
@@ -35,8 +36,8 @@
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn">💬 Chat</button>
-        <button class="f-btn" onclick="changeSize(2)">➕ Büyüt</button>
-        <button class="f-btn" onclick="changeSize(-2)">➖ Küçült</button>
+        <button class="f-btn" onclick="changePersonalSize(2)">➕ Yazıları Büyüt</button>
+        <button class="f-btn" onclick="changePersonalSize(-2)">➖ Yazıları Küçült</button>
         <div style="flex:1"></div>
         <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:40px; height:25px; border:none; cursor:pointer; background:none;">
         <span style="font-size:10px;">RENK SEÇ</span>
@@ -57,7 +58,8 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var currentSize = 13; // Başlangıç boyutu
+    var personalFontSize = 13; // Sadece senin ekranın için başlangıç boyutu
+    var selectedColor = "#2ecc71";
 
     function joinChat() {
         var nick = document.getElementById('nick-input').value;
@@ -67,19 +69,20 @@
         }
     }
 
-    // ANLIK DEĞİŞİM FONKSİYONU
-    function changeSize(amt) {
-        currentSize += amt;
-        // Limitler (çok küçük veya çok devasa olmasın)
-        if(currentSize < 10) currentSize = 10;
-        if(currentSize > 34) currentSize = 34;
+    // BU FONKSİYON SADECE SENİN EKRANINI DEĞİŞTİRİR
+    function changePersonalSize(amt) {
+        personalFontSize += amt;
+        if(personalFontSize < 10) personalFontSize = 10;
+        if(personalFontSize > 40) personalFontSize = 40;
         
-        // Input kutusundaki yazıyı anında büyüt/küçült
-        document.getElementById('input').style.fontSize = currentSize + "px";
+        // Chat alanındaki tüm mesajların fontunu anında değiştirir
+        document.getElementById('messages').style.fontSize = personalFontSize + "px";
+        // Alttaki yazma alanını da sana uygun boyuta getirir
+        document.getElementById('input').style.fontSize = personalFontSize + "px";
     }
 
     function changeColor(color) {
-        // Hem input kutusunun yazı rengini hem de nick rengini değiştir
+        selectedColor = color;
         document.getElementById('input').style.color = color;
         socket.emit('change color', color);
     }
@@ -88,7 +91,11 @@
         e.preventDefault();
         var input = document.getElementById('input');
         if (input.value) {
-            socket.emit('chat message', { text: input.value, size: currentSize });
+            // Mesajı gönderirken artık boyut göndermiyoruz, herkes kendi ayarını kullansın
+            socket.emit('chat message', { 
+                text: input.value, 
+                color: selectedColor 
+            });
             input.value = '';
         }
     });
@@ -99,7 +106,8 @@
         if(data.system) {
             div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
         } else {
-            div.innerHTML = `<span style="font-weight:bold; color:${data.color}">${data.user}:</span> <span style="color:${data.color}; font-size:${data.size}px">${data.text}</span>`;
+            // Yazı tipi boyutu burada sabit değil, CSS'ten (messages id'sinden) miras alıyor
+            div.innerHTML = `<span style="font-weight:bold; color:${data.color}">${data.user}:</span> <span style="color:${data.color}; word-wrap: break-word;">${data.text}</span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
