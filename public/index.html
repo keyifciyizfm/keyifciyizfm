@@ -20,13 +20,7 @@
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         
         .user-item { padding: 8px 0; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; }
-        
-        /* Yetki Yazısı İçin Özel Stil */
         .rank-text { font-family: 'Georgia', serif; font-style: italic; font-size: 11px; margin-left: 12px; font-weight: bold; }
-
-        #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; box-shadow: 0 -5px 20px #000; z-index: 50; }
-        .emoji-item { cursor: pointer; width: 30px; height: 30px; padding: 3px; border-radius: 4px; }
-        .emoji-item img { width: 100%; height: 100%; }
 
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
@@ -36,12 +30,12 @@
 
 <div id="login-overlay">
     <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Hoş Geldiniz</h3>
-        <input type="text" id="nick-input" placeholder="Rumuz..." maxlength="15" oninput="checkHalil(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM Sohbet</h3>
+        <input type="text" id="nick-input" placeholder="Rumuz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         <div id="pass-area" style="display:none;">
             <input type="password" id="pass-input" placeholder="Yönetici Şifresi..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         </div>
-        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">GİRİŞ YAP</button>
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">GİRİŞ</button>
         <p id="error-msg" style="color:red; font-size:11px; margin-top:10px;"></p>
     </div>
 </div>
@@ -49,19 +43,7 @@
 <div id="chat-container">
     <div id="top-gradient"></div>
     <div id="action-bar">
-        <button class="f-btn" onclick="toggleEmojiPanel()">😊 Emojiler</button>
-        <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-            <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
-            <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
-        </div>
-        <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
-            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-            <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:35px; height:22px; cursor:pointer; background:none; border:1px solid #222;">
-        </div>
+        <span style="color:#f1c40f; font-size:11px; font-weight:bold;">SOHBET ODASI</span>
         <div style="flex: 1;"></div>
         <button class="f-btn" style="background: #e74c3c; border:none;" onclick="location.reload()">ÇIKIŞ</button>
     </div>
@@ -69,15 +51,6 @@
     <div id="main-area">
         <div id="messages"></div>
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
-    </div>
-
-    <div id="emoji-panel">
-        <span class="emoji-item" onclick="addEmojiCode(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':cool:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':fire:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':rose:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"></span>
     </div>
 
     <form id="form" onsubmit="sendMessage(event)">
@@ -89,12 +62,11 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var personalFontSize = 13;
-    var selectedColor = "#2ecc71";
     var myRole = "", myNick = "";
-    var styles = { bold: false, italic: false, underline: false };
 
-    function checkHalil(v) { document.getElementById('pass-area').style.display = (v === "Halil") ? "block" : "none"; }
+    function checkAdmin(v) { 
+        document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; 
+    }
     
     function joinChat() {
         var nick = document.getElementById('nick-input').value;
@@ -104,58 +76,26 @@
         }
     }
 
-    socket.on('auth error', function(m) { document.getElementById('error-msg').innerText = m; });
-    socket.on('login success', function(d) {
+    socket.on('auth error', (m) => { document.getElementById('error-msg').innerText = m; });
+    socket.on('login success', (d) => {
         myRole = d.role; myNick = d.nick;
         document.getElementById('login-overlay').style.display = 'none';
     });
-
-    function toggleEmojiPanel() {
-        var panel = document.getElementById('emoji-panel');
-        panel.style.display = (panel.style.display === 'flex') ? 'none' : 'flex';
-    }
-
-    function addEmojiCode(code) {
-        document.getElementById('input').value += code + ' '; 
-        document.getElementById('input').focus();
-    }
-
-    function changePersonalSize(amt) {
-        personalFontSize += amt;
-        if(personalFontSize < 10) personalFontSize = 10;
-        document.getElementById('messages').style.fontSize = personalFontSize + "px";
-    }
-
-    function toggleStyle(type) {
-        styles[type] = !styles[type];
-        document.getElementById('btn-' + type).classList.toggle('active');
-    }
-
-    function changeColor(color) { selectedColor = color; document.getElementById('input').style.color = color; }
 
     function sendMessage(e) {
         e.preventDefault();
         var input = document.getElementById('input');
         if (input.value) {
-            socket.emit('chat message', { text: input.value, color: selectedColor, style: styles });
+            socket.emit('chat message', { text: input.value });
             input.value = '';
-            document.getElementById('emoji-panel').style.display = 'none';
         }
     }
 
     socket.on('chat message', function(data) {
         var div = document.createElement('div');
         div.style.marginBottom = "8px";
-        if(data.system) {
-            div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
-        } else {
-            let s = data.style || {};
-            // SOHBET ALANINDA SADE GÖRÜNÜM (YETKİ ROZETİ YOK)
-            div.innerHTML = `
-                <b style="color:${data.color}; cursor:pointer" onclick="admAction('${data.user}')">${data.user}:</b> 
-                <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">
-                    ${data.text}</span>`;
-        }
+        // SOHBETTE YETKİ GÖRÜNMEYECEK, SADECE NİCK: MESAJ
+        div.innerHTML = `<b style="color:${data.color}; cursor:pointer" onclick="admAction('${data.user}')">${data.user}:</b> <span style="color:${data.color};">${data.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
@@ -172,9 +112,7 @@
             item.onclick = () => admAction(u.nick);
             
             let badge = "";
-            if(u.role === 'Yönetici') {
-                badge = `<span class="rank-text" style="color:#ff4757; border-bottom:1px solid #ff4757;">Dj</span>`;
-            } else if(u.role === 'DJ') {
+            if(u.role === 'DJ') {
                 badge = `<span class="rank-text" style="color:#f1c40f; border-bottom:1px solid #f1c40f;">Dj</span>`;
             }
             
@@ -184,11 +122,10 @@
     });
 
     function admAction(tN) {
-        if (myRole !== 'Yönetici' || tN === myNick) return;
-        var c = prompt(tN + " için işlem: 1: Odadan At, 2: Banla, 3: DJ Yap");
+        if (myRole !== 'DJ' || tN === myNick) return;
+        var c = prompt(tN + " için işlem: 1: At, 2: Ban");
         if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: tN});
         if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: tN});
-        if(c === "3") socket.emit('admin command', {action: 'make_dj', targetNick: tN});
     }
 
     socket.on('force logout', (m) => { alert(m); location.reload(); });
