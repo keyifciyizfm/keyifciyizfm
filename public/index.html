@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Sohbet - Flatcast Style Pro</title>
     <style>
-        /* SENİN ORİJİNAL TASARIMIN */
+        /* TASARIMIN AYNI KALIYOR */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 2000; }
@@ -14,20 +14,15 @@
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
         .f-btn.active { background: #2ecc71; color: #000; }
-        
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 4px 0; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 5px; }
-        
-        #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; display: flex; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; box-shadow: 0 -5px 20px #000; z-index: 50; }
-        .emoji-item { cursor: pointer; width: 30px; height: 30px; }
-        .emoji-item img { width: 100%; height: 100%; }
-        
+        #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; display: flex; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; z-index: 50; }
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
 
-        /* YÜZEN MİXER PANELİ */
+        /* MİXER PANELİ */
         #dj-mixer { 
             display: none; position: absolute; top: 50px; right: 50px; width: 280px; 
             background: #2c3e50; border: 2px solid #f1c40f; border-radius: 8px; 
@@ -35,8 +30,8 @@
         }
         .mixer-head { background: #f1c40f; color: #000; padding: 8px; font-weight: bold; font-size: 11px; cursor: move; text-align: center; border-radius: 6px 6px 0 0; }
         .mixer-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-        .m-btn { width: 100%; padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; color: white; transition: 0.2s; }
-        .m-start { background: #27ae60; } .m-mic { background: #2980b9; } .m-stop { background: #c0392b; }
+        .m-btn { width: 100%; padding: 8px; font-size: 11px; font-weight: bold; cursor: pointer; border: none; border-radius: 4px; color: white; }
+        .m-mic { background: #2980b9; }
     </style>
 </head>
 <body>
@@ -44,10 +39,8 @@
 <div id="login-overlay">
     <div id="login-box">
         <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM Giriş</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
-        <div id="pass-area" style="display:none;">
-            <input type="password" id="pass-input" placeholder="Yönetici Şifresi..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
-        </div>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%;">
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%;"></div>
         <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
     </div>
 </div>
@@ -56,14 +49,8 @@
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn" onclick="toggleEmoji()">😊 Emojiler</button>
-        <div style="display: flex; gap: 5px; margin-left: 15px;">
-            <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
-            <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
-        </div>
-        <div style="display: flex; gap: 5px; margin-left: 15px;">
-            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
-            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-        </div>
+        <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
+        <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
         <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:30px; height:22px; margin-left:15px; cursor:pointer;">
         <div style="flex: 1;"></div>
         <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
@@ -77,20 +64,11 @@
     <div id="dj-mixer">
         <div class="mixer-head" id="mixer-drag">🎧 DJ MİXER PANELİ</div>
         <div class="mixer-body">
-            <button class="m-btn m-start" onclick="alert('Yayın Hattı Hazır!')">YAYINI AKTİF ET</button>
-            <button id="mic-btn" class="m-btn m-mic" onclick="toggleMic()">🎤 MİKROFON: KAPALI</button>
-            <hr style="border:0; border-top:1px solid #444;">
-            <p style="font-size:10px; color:#aaa; text-align:center;">MÜZİK ÇALAR</p>
+            <button id="mic-btn" class="m-btn m-mic" onclick="toggleMic()">🎤 MİKROFONU AÇ</button>
+            <p style="font-size:10px; color:#aaa; text-align:center;">MÜZİK SEÇ VE ÇAL</p>
             <input type="file" id="music-input" accept="audio/*" style="font-size:10px; color:#ccc; width:100%;">
             <audio id="dj-player" controls style="width:100%; height:30px;"></audio>
-            <button class="m-btn m-stop" onclick="location.reload()">YAYINI BİTİR</button>
         </div>
-    </div>
-
-    <div id="emoji-panel">
-        <span class="emoji-item" onclick="addE(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
-        <span class="emoji-item" onclick="addE(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
-        <span class="emoji-item" onclick="addE(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
     </div>
 
     <form id="form" onsubmit="sendMessage(event)">
@@ -103,97 +81,84 @@
 <script>
     var socket = io();
     var personalFontSize = 13;
-    var selectedColor = "#2ecc71";
-    var styles = { bold: false, italic: false };
     var micStream = null;
     var mediaRecorder = null;
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    function joinChat() {
-        socket.emit('join', { nick: document.getElementById('nick-input').value, password: document.getElementById('pass-input').value });
-    }
+    function joinChat() { socket.emit('join', { nick: document.getElementById('nick-input').value, password: document.getElementById('pass-input').value }); }
 
-    socket.on('login success', function(data) {
+    socket.on('login success', (data) => {
         document.getElementById('login-overlay').style.display = 'none';
         if(data.role === 'DJ') document.getElementById('dj-mixer').style.display = 'block';
     });
 
-    // MİXER: MİKROFON İŞLEMLERİ
+    // DJ SES GÖNDERME
     async function toggleMic() {
         if (!micStream) {
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(micStream);
-                mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) socket.emit('audio-stream', e.data); };
-                mediaRecorder.start(250); // Paketleme süresi
-                document.getElementById('mic-btn').innerText = "🎤 MİKROFON: AÇIK";
-                document.getElementById('mic-btn').style.background = "#e67e22";
-            } catch(e) { alert("Mikrofon izni gerekli!"); }
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(micStream);
+            mediaRecorder.ondataavailable = (e) => { if(e.data.size > 0) socket.emit('audio-stream', e.data); };
+            mediaRecorder.start(250); // Ses parçalarını 250ms'lik paketler halinde gönderir
+            document.getElementById('mic-btn').innerText = "🎤 MİKROFON AÇIK";
+            document.getElementById('mic-btn').style.background = "#e67e22";
         } else {
             micStream.getTracks().forEach(t => t.stop()); micStream = null;
-            document.getElementById('mic-btn').innerText = "🎤 MİKROFON: KAPALI";
+            document.getElementById('mic-btn').innerText = "🎤 MİKROFONU AÇ";
             document.getElementById('mic-btn').style.background = "#2980b9";
         }
     }
 
-    // DİNLEYİCİ: SES ALMA
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    socket.on('audio-receive', async function(data) {
-        try {
-            let buffer = await data.arrayBuffer();
-            audioCtx.decodeAudioData(buffer, (decoded) => {
-                let source = audioCtx.createBufferSource();
-                source.buffer = decoded; source.connect(audioCtx.destination); source.start(0);
-            });
-        } catch(e) {}
-    });
-
-    // GENEL FONKSİYONLAR (TASARIM BOZULMADAN)
-    function toggleEmoji() { var p = document.getElementById('emoji-panel'); p.style.display = (p.style.display==='none')?'flex':'none'; }
-    function addE(c) { document.getElementById('input').value += c + ' '; document.getElementById('input').focus(); }
-    function changePersonalSize(a) { personalFontSize += a; document.getElementById('messages').style.fontSize = personalFontSize+"px"; }
-    function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
-    function changeColor(c) { selectedColor = c; document.getElementById('input').style.color = c; }
-
-    function sendMessage(e) {
-        e.preventDefault(); var i = document.getElementById('input');
-        if(i.value) { socket.emit('chat message', { text: i.value, style: styles }); i.value = ''; document.getElementById('emoji-panel').style.display = 'none'; }
-    }
-
-    socket.on('chat message', function(data) {
-        var div = document.createElement('div'); div.style.marginBottom = "5px";
-        if(data.system) { div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`; }
-        else {
-            let s = data.style || {};
-            div.innerHTML = `<b style="color:${data.color}">👤 ${data.user}:</b> <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'};">${data.text}</span>`;
-        }
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    });
-
-    socket.on('user list', function(list) {
-        var uDiv = document.getElementById('users'); uDiv.innerHTML = '';
-        list.forEach(u => {
-            let item = document.createElement('div'); item.className = 'user-item'; item.style.color = u.color;
-            let tag = (u.role === 'DJ') ? ' <small style="font-weight:bold; border-bottom:1px solid">Dj</small>' : '';
-            item.innerHTML = '👤 ' + u.nick + tag; uDiv.appendChild(item);
+    // DİNLEYİCİ SES ALMA (BUFFER İLE ÇALMA)
+    socket.on('audio-receive', async (blobData) => {
+        let arrayBuffer = await blobData.arrayBuffer();
+        audioCtx.decodeAudioData(arrayBuffer, (buffer) => {
+            let source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+            source.start(0);
         });
     });
 
-    // MİXER SÜRÜKLEME
-    dragElement(document.getElementById("dj-mixer"));
-    function dragElement(e) {
-        var p1=0, p2=0, p3=0, p4=0; document.getElementById("mixer-drag").onmousedown = dragM;
-        function dragM(e) { e.preventDefault(); p3=e.clientX; p4=e.clientY; document.onmouseup = closeD; document.onmousemove = elemD; }
-        function elemD(e) { e.preventDefault(); p1=p3-e.clientX; p2=p4-e.clientY; p3=e.clientX; p4=e.clientY; e.target.parentElement.style.top = (e.target.parentElement.offsetTop - p2) + "px"; e.target.parentElement.style.left = (e.target.parentElement.offsetLeft - p1) + "px"; }
-        function closeD() { document.onmouseup = null; document.onmousemove = null; }
-    }
-    
-    window.onclick = () => { if (audioCtx.state === 'suspended') audioCtx.resume(); };
+    // Sayfaya bir tık, ses kanalını açar (Tarayıcı kuralı)
+    window.onclick = () => { if(audioCtx.state === 'suspended') audioCtx.resume(); };
+
+    // Müzik çalar
     document.getElementById('music-input').onchange = (e) => {
         document.getElementById('dj-player').src = URL.createObjectURL(e.target.files[0]);
         document.getElementById('dj-player').play();
     };
+
+    // Diğer fonksiyonlar
+    function changePersonalSize(a) { personalFontSize += a; document.getElementById('messages').style.fontSize = personalFontSize+"px"; }
+    function sendMessage(e) { e.preventDefault(); var i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; } }
+    
+    socket.on('chat message', (data) => {
+        var div = document.createElement('div');
+        div.innerHTML = `<b style="color:${data.color}">👤 ${data.user}:</b> ${data.text}`;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+
+    socket.on('user list', (list) => {
+        var uDiv = document.getElementById('users'); uDiv.innerHTML = '';
+        list.forEach(u => {
+            let item = document.createElement('div'); item.className = 'user-item'; item.style.color = u.color;
+            item.innerHTML = '👤 ' + u.nick + (u.role === 'DJ' ? ' <small>Dj</small>' : '');
+            uDiv.appendChild(item);
+        });
+    });
+
+    // SÜRÜKLEME
+    dragElement(document.getElementById("dj-mixer"));
+    function dragElement(e) {
+        var p1=0, p2=0, p3=0, p4=0; document.getElementById("mixer-drag").onmousedown = dragM;
+        function dragM(e) { e.preventDefault(); p3=e.clientX; p4=e.clientY; document.onmouseup = () => {document.onmouseup=null; document.onmousemove=null;}; document.onmousemove = (e) => {
+            e.preventDefault(); p1=p3-e.clientX; p2=p4-e.clientY; p3=e.clientX; p4=e.clientY;
+            e.target.parentElement.style.top = (e.target.parentElement.offsetTop - p2) + "px";
+            e.target.parentElement.style.left = (e.target.parentElement.offsetLeft - p1) + "px";
+        };}
+    }
 </script>
 </body>
 </html>
