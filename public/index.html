@@ -1,178 +1,57 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Sohbet Paneli</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #1a1a1a; color: #ccc; font-family: 'Verdana', sans-serif; height: 100vh; display: flex; justify-content: center; align-items: center; }
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+let users = {}; 
+
+io.on('connection', (socket) => {
+    // Kullanıcı giriş yaptığında
+    socket.on('join', (data) => {
+        socket.nick = data.nick || "Misafir";
+        socket.color = "#2ecc71"; // Varsayılan renk
+        users[socket.id] = { nick: socket.nick, color: socket.color };
         
-        /* Giriş Ekranı */
-        #login-overlay { position: fixed; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; }
-        #login-box { background: #333; padding: 30px; border-radius: 10px; border: 2px solid #444; text-align: center; width: 350px; box-shadow: 0 0 20px #000; }
-        .auth-input { width: 100%; padding: 12px; margin: 10px 0; background: #000; color: #fff; border: 1px solid #555; border-radius: 4px; }
-        
-        /* Ana Panel */
-        #chat-container { width: 950px; height: 650px; background: #333; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
-        #action-bar { background: #444; padding: 10px; display: flex; gap: 8px; align-items: center; border-bottom: 2px solid #222; }
-        
-        /* Buton Stili (Gri Flatcast Tarzı) */
-        .f-btn { background: linear-gradient(#888, #222); color: #fff; border: 1px solid #000; padding: 8px 15px; cursor: pointer; font-size: 12px; font-weight: bold; border-radius: 3px; text-shadow: 1px 1px #000; }
-        .f-btn:hover { background: linear-gradient(#999, #333); }
-        .f-btn.active { background: #2ecc71; color: #000; text-shadow: none; }
-
-        #main-area { display: flex; flex: 1; overflow: hidden; padding: 10px; gap: 10px; background: #222; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 15px; overflow-y: auto; border-radius: 4px; color: #fff; font-size: 14px; }
-        #user-sidebar { flex: 1; background: #111; border: 1px solid #444; padding: 10px; border-radius: 4px; overflow-y: auto; }
-        
-        /* Emoji Paneli */
-        #emoji-panel { display: none; position: absolute; bottom: 70px; left: 10px; background: #333; border: 2px solid #555; padding: 10px; width: 250px; flex-wrap: wrap; gap: 10px; z-index: 500; border-radius: 5px; box-shadow: 0 -5px 15px #000; }
-        .emoji { font-size: 20px; cursor: pointer; transition: 0.2s; }
-        .emoji:hover { transform: scale(1.3); }
-
-        form { display: flex; padding: 15px; background: #333; gap: 10px; border-top: 1px solid #222; }
-        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 12px; outline: none; border-radius: 4px; }
-    </style>
-</head>
-<body>
-
-<div id="login-overlay">
-    <div id="login-box">
-        <h2 id="auth-title" style="color:#f1c40f; margin-bottom:15px;">Sohbet Girişi</h2>
-        <input id="nick" class="auth-input" placeholder="Kullanıcı Adı">
-        <input id="pass" class="auth-input" type="password" placeholder="Şifre">
-        <div style="display:flex; gap:10px;">
-            <button class="f-btn" style="flex:1" onclick="auth('login')">GİRİŞ YAP</button>
-            <button class="f-btn" style="flex:1; background: #555;" onclick="auth('reg')">KAYDOL</button>
-        </div>
-        <p id="msg" style="color:#ff4757; font-size:12px; margin-top:15px; font-weight:bold;"></p>
-    </div>
-</div>
-
-<div id="chat-container">
-    <div id="action-bar">
-        <button class="f-btn" onclick="toggleEmoji()">😊 Emojiler</button>
-        <div style="width:1px; height:20px; background:#666; margin:0 5px;"></div>
-        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')">B</button>
-        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')">I</button>
-        <div style="flex:1"></div>
-        <button class="f-btn" style="background:#c0392b" onclick="location.reload()">Çıkış</button>
-    </div>
-
-    <div id="main-area">
-        <div id="messages"></div>
-        <div id="user-sidebar">
-            <b style="color:#f1c40f; font-size:12px;">DİNLEYİCİLER</b>
-            <hr style="border:0; border-top:1px solid #333; margin:10px 0;">
-            <div id="users"></div>
-        </div>
-    </div>
-
-    <div id="emoji-panel">
-        <span class="emoji" onclick="addEmoji('😊')">😊</span>
-        <span class="emoji" onclick="addEmoji('😂')">😂</span>
-        <span class="emoji" onclick="addEmoji('😉')">😉</span>
-        <span class="emoji" onclick="addEmoji('😍')">😍</span>
-        <span class="emoji" onclick="addEmoji('🔥')">🔥</span>
-        <span class="emoji" onclick="addEmoji('🌹')">🌹</span>
-        <span class="emoji" onclick="addEmoji('👍')">👍</span>
-        <span class="emoji" onclick="addEmoji('🎵')">🎵</span>
-    </div>
-
-    <form onsubmit="send(event)">
-        <input id="input" autocomplete="off" placeholder="Mesajınızı yazın...">
-        <button class="f-btn" style="width:100px;">GÖNDER</button>
-    </form>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    var socket = io();
-    var myRole = "";
-    var myNick = "";
-    var styles = { bold: false, italic: false };
-
-    function auth(type) {
-        var n = document.getElementById('nick').value.trim();
-        var p = document.getElementById('pass').value.trim();
-        if(!n || !p) return document.getElementById('msg').innerText = "Alanları doldurun!";
-        socket.emit(type === 'reg' ? 'register' : 'login', {nick: n, password: p});
-    }
-
-    socket.on('auth error', (m) => document.getElementById('msg').innerText = m);
-    socket.on('auth success', (m) => { alert(m); });
-    socket.on('login success', (d) => { 
-        myRole = d.role; 
-        myNick = d.nick;
-        document.getElementById('login-overlay').style.display='none'; 
+        io.emit('user list', Object.values(users));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    function toggleEmoji() {
-        var p = document.getElementById('emoji-panel');
-        p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
-    }
-
-    function addEmoji(e) {
-        document.getElementById('input').value += e;
-        document.getElementById('input').focus();
-    }
-
-    function toggleStyle(s) {
-        styles[s] = !styles[s];
-        document.getElementById('btn-' + s).classList.toggle('active');
-    }
-
-    function send(e) {
-        e.preventDefault();
-        var i = document.getElementById('input');
-        if(!i.value.trim()) return;
-        socket.emit('chat message', {
-            text: i.value, 
-            color: (myRole==='Yönetici'?'#ff4757':'#2ecc71'),
-            style: styles
-        });
-        i.value = '';
-        document.getElementById('emoji-panel').style.display = 'none';
-    }
-
-    socket.on('chat message', (d) => {
-        var div = document.createElement('div');
-        div.style.marginBottom = "8px";
-        if(d.system) {
-            div.innerHTML = `<small style="color:#888"><i>${d.text}</i></small>`;
-        } else {
-            var bold = d.style && d.style.bold ? 'font-weight:bold;' : '';
-            var italic = d.style && d.style.italic ? 'font-style:italic;' : '';
-            div.innerHTML = `
-                <span style="font-size:10px; background:${d.color}; color:#000; padding:1px 4px; border-radius:2px; font-weight:bold; margin-right:5px;">${d.role.toUpperCase()}</span>
-                <b style="color:${d.color}; cursor:pointer" onclick="adm('${d.user}')">${d.user}:</b> 
-                <span style="color:${d.color}; ${bold} ${italic}">${d.text}</span>`;
+    // Renk değişimi
+    socket.on('change color', (newColor) => {
+        if (users[socket.id]) {
+            users[socket.id].color = newColor;
+            socket.color = newColor;
+            io.emit('user list', Object.values(users));
         }
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
-    socket.on('user list', (list) => {
-        var container = document.getElementById('users');
-        container.innerHTML = '';
-        list.forEach(u => {
-            var div = document.createElement('div');
-            div.style.color = u.color;
-            div.style.fontSize = "13px";
-            div.style.padding = "3px 0";
-            div.innerHTML = `👤 ${u.nick}`;
-            container.appendChild(div);
-        });
+    // Mesaj iletimi
+    socket.on('chat message', (data) => {
+        if (users[socket.id]) {
+            io.emit('chat message', { 
+                user: socket.nick, 
+                text: data.text, 
+                color: data.color, 
+                style: data.style 
+            });
+        }
     });
 
-    function adm(t) {
-        if(myRole !== 'Yönetici' || t === myNick) return;
-        var c = prompt(t + " kullanıcısı için işlem seçin:\n1: Odadan At (Kick)\n2: Engelle (Ban)");
-        if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: t});
-        if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: t});
-    }
+    socket.on('disconnect', () => {
+        if (users[socket.id]) {
+            const nick = users[socket.id].nick;
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
+        }
+    });
+});
 
-    socket.on('force logout', (m) => { alert(m); location.reload(); });
-</script>
-</body>
-</html>
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Sade Sohbet Sistemi Aktif!`));
