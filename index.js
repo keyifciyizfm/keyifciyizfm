@@ -1,74 +1,198 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-let users = {}; 
-
-// Emoji kodlarını görsele çeviren fonksiyon
-function parseEmojis(text) {
-    const emojiMap = {
-        ":smile:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg",
-        ":joy:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg",
-        ":heart:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg",
-        ":fire:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg",
-        ":microphone:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg",
-        ":cool:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg",
-        ":thumbsup:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg",
-        ":rose:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"
-    };
-
-    let newText = text;
-    for (const [code, url] of Object.entries(emojiMap)) {
-        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:20px; height:20px; vertical-align:middle; margin:0 2px;">`);
-    }
-    return newText;
-}
-
-io.on('connection', (socket) => {
-    socket.on('join', (data) => {
-        socket.nick = data.nick || "Misafir";
-        socket.color = "#2ecc71";
-        users[socket.id] = { nick: socket.nick, color: socket.color };
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sohbet - Flatcast Style Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; } /* position relative ekledik */
+        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         
-        io.emit('user list', Object.values(users));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
-    });
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
+        .f-btn.active { background: #2ecc71; color: #000; }
 
-    socket.on('change color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            socket.color = newColor;
-            io.emit('user list', Object.values(users));
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
+
+        /* Gerçekçi ve Hemen Üstte Açılan Emoji Paneli */
+        #emoji-panel { 
+            display: none; 
+            position: absolute; 
+            bottom: 60px; /* Yazı kutusunun hemen üzerinde */
+            left: 12px; 
+            background: #333; 
+            border: 2px solid #555; 
+            padding: 12px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 12px; 
+            width: 280px; 
+            border-radius: 5px;
+            box-shadow: 0 -5px 20px #000; /* Gölgelendirme yukarı doğru */
+            z-index: 50;
         }
+        
+        /* Panelin içindeki gerçekçi emojiler */
+        .emoji-item { cursor: pointer; display: block; width: 30px; height: 30px; padding: 3px; transition: background 0.1s; border-radius: 4px; }
+        .emoji-item:hover { background: #555; }
+        .emoji-item img { width: 100%; height: 100%; }
+
+        form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div id="login-box">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Sohbet Girişi</h3>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." maxlength="15" style="padding:10px; margin-bottom:10px; display:block; width:100%;">
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
+    </div>
+</div>
+
+<div id="chat-container">
+    <div id="top-gradient"></div>
+    
+    <div id="action-bar">
+        <button class="f-btn" onclick="toggleEmojiPanel()">😊 Emojiler</button>
+        
+        <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
+            <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
+            <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
+        </div>
+
+        <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
+            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
+            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
+            <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:35px; height:22px; cursor:pointer; background:none; border:1px solid #222;">
+            <span style="font-size:10px; color:#aaa;">RENK</span>
+        </div>
+
+        <div style="flex: 1;"></div>
+        <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
+    </div>
+
+    <div id="main-area">
+        <div id="messages"></div>
+        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
+    </div>
+
+    <div id="emoji-panel" style="display: none;">
+        <span class="emoji-item" onclick="addEmojiCode(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':cool:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':fire:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':thumbsup:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':microphone:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
+        <span class="emoji-item" onclick="addEmojiCode(':rose:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"></span>
+    </div>
+
+    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:12px; background:#3b3b3b; gap:8px;">
+        <input id="input" autocomplete="off" placeholder="Mesajınız..." />
+        <button type="submit" class="f-btn">GÖNDER</button>
+    </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var personalFontSize = 13;
+    var selectedColor = "#2ecc71";
+    var styles = { bold: false, italic: false, underline: false };
+
+    function joinChat() {
+        var nick = document.getElementById('nick-input').value;
+        if(nick.trim() != "") {
+            socket.emit('join', { nick: nick });
+            document.getElementById('login-overlay').style.display = 'none';
+        }
+    }
+
+    function toggleEmojiPanel() {
+        var panel = document.getElementById('emoji-panel');
+        panel.style.display = (panel.style.display === 'none') ? 'flex' : 'none';
+    }
+
+    // Mesaj kutusuna emoji kodunu ekler (gerçek resim sunucuda çevrilir)
+    function addEmojiCode(code) {
+        document.getElementById('input').value += code + ' '; 
+        document.getElementById('input').focus();
+    }
+
+    function changePersonalSize(amt) {
+        personalFontSize += amt;
+        if(personalFontSize < 10) personalFontSize = 10;
+        document.getElementById('messages').style.fontSize = personalFontSize + "px";
+        document.getElementById('input').style.fontSize = personalFontSize + "px";
+    }
+
+    function toggleStyle(type) {
+        styles[type] = !styles[type];
+        document.getElementById('btn-' + type).classList.toggle('active');
+        if(type === 'bold') document.getElementById('input').style.fontWeight = styles.bold ? 'bold' : 'normal';
+        if(type === 'italic') document.getElementById('input').style.fontStyle = styles.italic ? 'italic' : 'normal';
+        if(type === 'underline') document.getElementById('input').style.textDecoration = styles.underline ? 'underline' : 'none';
+    }
+
+    function changeColor(color) {
+        selectedColor = color;
+        document.getElementById('input').style.color = color;
+        socket.emit('change color', color);
+    }
+
+    function sendMessage(e) {
+        e.preventDefault();
+        var input = document.getElementById('input');
+        if (input.value) {
+            socket.emit('chat message', { 
+                text: input.value, 
+                color: selectedColor,
+                style: styles 
+            });
+            input.value = '';
+            document.getElementById('emoji-panel').style.display = 'none';
+        }
+    }
+
+    socket.on('chat message', function(data) {
+        var div = document.createElement('div');
+        div.style.marginBottom = "5px";
+        if(data.system) {
+            div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
+        } else {
+            let s = data.style || {};
+            div.innerHTML = `
+                <span style="font-weight:bold; color:${data.color}">${data.user}:</span> 
+                <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'}; word-wrap: break-word; line-height:1.4;">
+                    ${data.text} </span>`;
+        }
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
-    socket.on('chat message', (data) => {
-        // Gelen metni sunucuda emojilere çevirip geri gönderiyoruz
-        const cleanText = parseEmojis(data.text); 
-        io.emit('chat message', { 
-            user: socket.nick, 
-            text: cleanText, 
-            color: socket.color, 
-            style: data.style 
+    socket.on('user list', function(userObjects) {
+        var userDiv = document.getElementById('users');
+        userDiv.innerHTML = '';
+        userObjects.forEach(function(u) {
+            var item = document.createElement('div');
+            item.className = 'user-item';
+            item.style.color = u.color;
+            item.innerHTML = '👤 ' + u.nick;
+            userDiv.appendChild(item);
         });
     });
-
-    socket.on('disconnect', () => {
-        if (users[socket.id]) {
-            const nick = users[socket.id].nick;
-            delete users[socket.id];
-            io.emit('user list', Object.values(users));
-            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo Yayında!`));
+</script>
+</body>
+</html>
