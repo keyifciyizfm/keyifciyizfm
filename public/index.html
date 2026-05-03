@@ -2,160 +2,142 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keyifciyiz FM - Canlı Sohbet</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>KeyifciyizFM - Canlı Sohbet</title>
     <style>
-        :root {
-            --bg-color: #0f0f0f;
-            --panel-bg: #1a1a1a;
-            --accent-color: #e67e22; /* Turuncu tonu */
-            --admin-color: #ff4757;
-            --text-color: #ecf0f1;
+        * { box-sizing: border-box; }
+        body { 
+            background: #121212; 
+            color: #e0e0e0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+        }
+        
+        /* Üst Bar */
+        header { 
+            background: linear-gradient(180deg, #333 0%, #000 100%); 
+            padding: 10px; 
+            text-align: center; 
+            border-bottom: 2px solid #444;
+            font-weight: bold;
+            color: #00ff00; /* Flatcast yeşili */
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+
+        /* Chat Penceresi */
+        #chat-window { 
+            flex: 3; 
+            overflow-y: auto; 
+            padding: 15px; 
+            background: #000; 
+            border-right: 1px solid #333;
         }
 
-        /* Giriş Ekranı */
-        #login-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 1000;
+        /* Sağ Kullanıcı Listesi */
+        #user-list { 
+            flex: 1; 
+            background: #1a1a1a; 
+            padding: 10px; 
+            font-size: 0.9em;
         }
 
-        .login-box {
-            background: var(--panel-bg); padding: 30px; border-radius: 15px;
-            border: 1px solid var(--accent-color); text-align: center;
+        .user-item { color: #00ccff; margin-bottom: 5px; font-weight: bold; }
+
+        /* Mesaj Alanı */
+        .msg { margin-bottom: 8px; font-size: 0.95em; line-height: 1.4; border-bottom: 1px solid #111; padding-bottom: 4px; }
+        .timestamp { color: #666; font-size: 0.8em; margin-right: 8px; }
+        .username { color: #00ccff; font-weight: bold; margin-right: 5px; }
+
+        /* Alt Giriş Alanı */
+        footer { 
+            background: #222; 
+            padding: 15px; 
+            display: flex; 
+            gap: 10px; 
+            border-top: 1px solid #444;
         }
 
-        input {
-            display: block; width: 250px; padding: 12px; margin: 10px 0;
-            background: #2c3e50; border: none; color: white; border-radius: 5px;
+        input { 
+            flex: 1; 
+            padding: 12px; 
+            background: #333; 
+            border: 1px solid #555; 
+            color: #fff; 
+            border-radius: 4px;
         }
 
-        button {
-            background: var(--accent-color); color: white; border: none;
-            padding: 12px 30px; border-radius: 5px; cursor: pointer; font-weight: bold;
+        button { 
+            padding: 10px 25px; 
+            background: #0066cc; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer;
+            font-weight: bold;
         }
 
-        /* Ana Panel */
-        .sidebar {
-            width: 280px; background: var(--panel-bg); border-right: 1px solid #333;
-            display: flex; flex-direction: column;
-        }
-
-        .user-list { flex: 1; padding: 15px; overflow-y: auto; }
-        .user-item { 
-            padding: 10px; border-bottom: 1px solid #2c3e50; 
-            display: flex; justify-content: space-between; align-items: center;
-        }
-
-        .chat-area { flex: 1; display: flex; flex-direction: column; position: relative; }
-
-        #messages {
-            flex: 1; padding: 20px; overflow-y: auto;
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://source.unsplash.com/random/1600x900/?music,dark');
-            background-size: cover;
-        }
-
-        .msg { margin-bottom: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.5); }
-        .msg b { color: var(--accent-color); }
-        .msg.admin b { color: var(--admin-color); }
-
-        .input-box {
-            padding: 20px; background: var(--panel-bg); display: flex; gap: 10px;
-        }
-
-        #msg-input { flex: 1; margin: 0; }
-
-        .role-tag { font-size: 0.7em; padding: 2px 5px; border-radius: 3px; background: #444; }
+        button:hover { background: #0052a3; }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay">
-        <div class="login-box">
-            <h2>Keyifciyiz FM</h2>
-            <input type="text" id="username" placeholder="Rumuzunuz...">
-            <input type="password" id="password" placeholder="Şifre (Opsiyonel)">
-            <button onclick="joinChat()">Sohbete Başla</button>
-        </div>
+<header>🎵 KEYİFCİYİZFM - Yayın Akışı: Kesintisiz Müzik 🎵</header>
+
+<div class="main-container">
+    <div id="chat-window"></div>
+    
+    <div id="user-list">
+        <h4 style="color: #888; border-bottom: 1px solid #444;">Dinleyiciler</h4>
+        <div class="user-item">● Keyifciyiz_Bot</div>
+        <div class="user-item">● Misafir_Konuk</div>
     </div>
+</div>
 
-    <div class="sidebar">
-        <div style="padding: 20px; background: var(--accent-color); text-align: center; font-weight: bold;">
-            ONLINE KULLANICILAR
-        </div>
-        <div class="user-list" id="user-list"></div>
-        <div id="radio-player" style="padding: 10px;">
-            <audio controls style="width: 100%;">
-                <source src="RADYO_URL_BURAYA" type="audio/mpeg">
-            </audio>
-        </div>
-    </div>
+<footer>
+    <input type="text" id="usernameInput" placeholder="Adınız..." style="flex: 0.3;">
+    <input type="text" id="messageInput" placeholder="Mesajınızı buraya yazın...">
+    <button id="sendBtn">Gönder</button>
+</footer>
 
-    <div class="chat-area">
-        <div id="messages"></div>
-        <div class="input-box">
-            <input type="text" id="msg-input" placeholder="Mesajınızı yazın..." onkeypress="checkEnter(event)">
-            <button onclick="sendMessage()">Gönder</button>
-        </div>
-    </div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    const chatWindow = document.getElementById('chat-window');
+    const messageInput = document.getElementById('messageInput');
+    const usernameInput = document.getElementById('usernameInput');
+    const sendBtn = document.getElementById('sendBtn');
 
-    <script>
-        const socket = io();
-        let myInfo = {};
-
-        function joinChat() {
-            const user = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            if(!user) return alert("Lütfen rumuz girin!");
-            
-            socket.emit('join', { username: user, password: pass });
+    function sendMessage() {
+        const msg = messageInput.value;
+        const user = usernameInput.value || "Misafir";
+        
+        if (msg.trim() !== "") {
+            socket.emit('chat message', { user: user, text: msg });
+            messageInput.value = '';
         }
+    }
 
-        socket.on('loginApproved', (data) => {
-            myInfo = data;
-            document.getElementById('login-overlay').style.display = 'none';
-        });
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+    });
 
-        socket.on('message', (data) => {
-            const div = document.createElement('div');
-            div.className = `msg ${data.role === 'SÜPER ADMİN' ? 'admin' : ''}`;
-            div.innerHTML = `<b>[${data.role}] ${data.user}:</b> ${data.text}`;
-            const msgContainer = document.getElementById('messages');
-            msgContainer.appendChild(div);
-            msgContainer.scrollTop = msgContainer.scrollHeight;
-        });
-
-        socket.on('updateUserList', (users) => {
-            const list = document.getElementById('user-list');
-            list.innerHTML = '';
-            users.forEach(u => {
-                list.innerHTML += `<div class="user-item">
-                    <span>${u.username}</span>
-                    <span class="role-tag">${u.role}</span>
-                </div>`;
-            });
-        });
-
-        function sendMessage() {
-            const input = document.getElementById('msg-input');
-            if(input.value.trim() !== "") {
-                socket.emit('sendMessage', input.value);
-                input.value = '';
-            }
-        }
-
-        function checkEnter(e) { if(e.key === 'Enter') sendMessage(); }
-    </script>
+    socket.on('chat message', function(data) {
+        const now = new Date();
+        const time = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        
+        const div = document.createElement('div');
+        div.className = 'msg';
+        div.innerHTML = `<span class="timestamp">(${time})</span><span class="username">${data.user}:</span> ${data.text}`;
+        
+        chatWindow.appendChild(div);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    });
+</script>
 </body>
 </html>
