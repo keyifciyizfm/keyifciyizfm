@@ -10,8 +10,6 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
-
-// YÖNETİCİ AYARLARI
 const masterNick = "Keyifciyiz_Fm"; 
 const masterPass = "123456";
 
@@ -38,7 +36,6 @@ io.on('connection', (socket) => {
         if (data.nick === masterNick && data.password !== masterPass) {
             return socket.emit('auth error', 'Hatalı Şifre!');
         }
-
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'DJ' : 'Dinleyici';
         socket.color = (socket.role === 'DJ') ? '#f1c40f' : (data.color || "#2ecc71");
@@ -53,14 +50,8 @@ io.on('connection', (socket) => {
 
     socket.on('chat message', (data) => {
         if (socket.isMuted) return socket.emit('chat message', { user: 'SİSTEM', text: 'Susturuldunuz!', system: true });
-        
         const cleanText = parseEmojis(data.text); 
-        io.emit('chat message', { 
-            user: socket.nick, 
-            text: cleanText, 
-            color: socket.color, 
-            style: data.style 
-        });
+        io.emit('chat message', { user: socket.nick, text: cleanText, color: socket.color, style: data.style });
     });
 
     socket.on('admin-action', (data) => {
@@ -72,12 +63,6 @@ io.on('connection', (socket) => {
         if (data.action === 'mute') {
             target.isMuted = !target.isMuted;
             target.emit('chat message', { user: 'SİSTEM', text: target.isMuted ? 'Susturuldunuz.' : 'Konuşabilirsiniz.', system: true });
-        }
-        if (data.action === 'op') {
-            users[data.targetId].role = 'Operatör';
-            users[data.targetId].color = '#3498db';
-            target.color = '#3498db';
-            io.emit('user list', Object.values(users));
         }
     });
 
@@ -91,4 +76,5 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log(`Sohbet Yayında!`));
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Radyo Yayında!`));
