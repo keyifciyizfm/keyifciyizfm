@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Sohbet - Kişisel Görünüm Paneli</title>
+    <title>Sohbet - Flatcast Style Pro</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
@@ -11,12 +11,12 @@
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 8px; display: flex; gap: 8px; border-bottom: 2px solid #222; align-items: center; }
+        
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; user-select: none; }
+        .f-btn.active { background: #2ecc71; color: #000; } /* Aktif olduğunda renk değiştirsin */
+
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        
-        /* ÖNEMLİ: Mesajların genel boyutu için id ekledik */
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
-        
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 4px 0; border-bottom: 1px solid #222; }
         #input { flex:1; background:#000; color:#fff; border:1px solid #555; padding:10px; }
@@ -36,11 +36,16 @@
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn">💬 Chat</button>
-        <button class="f-btn" onclick="changePersonalSize(2)">➕ Yazıları Büyüt</button>
-        <button class="f-btn" onclick="changePersonalSize(-2)">➖ Yazıları Küçült</button>
+        <button class="f-btn" onclick="changePersonalSize(2)">➕</button>
+        <button class="f-btn" onclick="changePersonalSize(-2)">➖</button>
+        
+        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
+        <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
+
         <div style="flex:1"></div>
         <input type="color" id="colorPicker" onchange="changeColor(this.value)" style="width:40px; height:25px; border:none; cursor:pointer; background:none;">
-        <span style="font-size:10px;">RENK SEÇ</span>
+        <span style="font-size:10px;">RENK</span>
         <button class="f-btn" onclick="location.reload()">👤 Çıkış</button>
     </div>
 
@@ -58,8 +63,11 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var personalFontSize = 13; // Sadece senin ekranın için başlangıç boyutu
+    var personalFontSize = 13;
     var selectedColor = "#2ecc71";
+    
+    // Stil durumlarını tutan değişkenler
+    var styles = { bold: false, italic: false, underline: false };
 
     function joinChat() {
         var nick = document.getElementById('nick-input').value;
@@ -69,16 +77,29 @@
         }
     }
 
-    // BU FONKSİYON SADECE SENİN EKRANINI DEĞİŞTİRİR
     function changePersonalSize(amt) {
         personalFontSize += amt;
         if(personalFontSize < 10) personalFontSize = 10;
-        if(personalFontSize > 40) personalFontSize = 40;
-        
-        // Chat alanındaki tüm mesajların fontunu anında değiştirir
         document.getElementById('messages').style.fontSize = personalFontSize + "px";
-        // Alttaki yazma alanını da sana uygun boyuta getirir
         document.getElementById('input').style.fontSize = personalFontSize + "px";
+    }
+
+    // Stil Aç/Kapat Fonksiyonu
+    function toggleStyle(type) {
+        styles[type] = !styles[type];
+        var btn = document.getElementById('btn-' + type);
+        
+        if(styles[type]) {
+            btn.classList.add('active');
+            if(type === 'bold') document.getElementById('input').style.fontWeight = 'bold';
+            if(type === 'italic') document.getElementById('input').style.fontStyle = 'italic';
+            if(type === 'underline') document.getElementById('input').style.textDecoration = 'underline';
+        } else {
+            btn.classList.remove('active');
+            if(type === 'bold') document.getElementById('input').style.fontWeight = 'normal';
+            if(type === 'italic') document.getElementById('input').style.fontStyle = 'normal';
+            if(type === 'underline') document.getElementById('input').style.textDecoration = 'none';
+        }
     }
 
     function changeColor(color) {
@@ -91,10 +112,10 @@
         e.preventDefault();
         var input = document.getElementById('input');
         if (input.value) {
-            // Mesajı gönderirken artık boyut göndermiyoruz, herkes kendi ayarını kullansın
             socket.emit('chat message', { 
                 text: input.value, 
-                color: selectedColor 
+                color: selectedColor,
+                style: styles // Mevcut stilleri de gönderiyoruz
             });
             input.value = '';
         }
@@ -103,11 +124,21 @@
     socket.on('chat message', function(data) {
         var div = document.createElement('div');
         div.style.marginBottom = "5px";
+        
         if(data.system) {
             div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
         } else {
-            // Yazı tipi boyutu burada sabit değil, CSS'ten (messages id'sinden) miras alıyor
-            div.innerHTML = `<span style="font-weight:bold; color:${data.color}">${data.user}:</span> <span style="color:${data.color}; word-wrap: break-word;">${data.text}</span>`;
+            // Gelen stili uygula
+            let s = data.style || {};
+            let fontWeight = s.bold ? 'bold' : 'normal';
+            let fontStyle = s.italic ? 'italic' : 'normal';
+            let textDecor = s.underline ? 'underline' : 'none';
+
+            div.innerHTML = `
+                <span style="font-weight:bold; color:${data.color}">${data.user}:</span> 
+                <span style="color:${data.color}; font-weight:${fontWeight}; font-style:${fontStyle}; text-decoration:${textDecor}; word-wrap: break-word;">
+                    ${data.text}
+                </span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
