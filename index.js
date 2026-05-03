@@ -10,7 +10,7 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let activeUsers = {}; 
-let bannedIPs = []; // IP tabanlı basit engelleme (sayfa yenilese de giremez)
+let bannedIPs = []; 
 
 // SENİN BİLGİLERİN
 const adminNick = "Halil"; 
@@ -24,9 +24,8 @@ io.on('connection', (socket) => {
             return socket.emit('auth error', 'Bu odaya girişiniz engellenmiştir!');
         }
 
-        // Eğer Halil nickiyle giriliyorsa şifre kontrol et
         if (data.nick === adminNick && data.password !== adminPass) {
-            return socket.emit('auth error', 'Bu nick yöneticiye aittir, şifre yanlış!');
+            return socket.emit('auth error', 'Yönetici şifresi hatalı!');
         }
 
         socket.nick = data.nick || "Misafir";
@@ -46,10 +45,10 @@ io.on('connection', (socket) => {
         
         if (targetId) {
             if (data.action === 'kick') {
-                io.to(targetId).emit('force logout', 'Yönetici sizi odadan attı!');
+                io.to(targetId).emit('force logout', 'Yönetici tarafından atıldınız!');
                 io.sockets.sockets.get(targetId).disconnect();
             } else if (data.action === 'ban') {
-                bannedIPs.push(activeUsers[targetId].ip); // IP'sini listeye al
+                bannedIPs.push(activeUsers[targetId].ip);
                 io.to(targetId).emit('force logout', 'Süresiz engellendiniz!');
                 io.sockets.sockets.get(targetId).disconnect();
             }
