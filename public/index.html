@@ -2,79 +2,71 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sohbet - Flatcast Style</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #ccc; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; }
         
-        #chat-container { width: 900px; height: 550px; background: #333; border: 2px solid #444; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        /* Nick Giriş Ekranı */
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 100; }
+        #login-box { background: #333; padding: 20px; border: 2px solid #00ff00; text-align: center; border-radius: 10px; }
         
-        /* Nostaljik Üst Bar */
-        #top-gradient { height: 12px; width: 100%; background: linear-gradient(to right, #00ff00 0%, #00ff00 40%, #ffff00 70%, #ff0000 100%); border-bottom: 1px solid #000; }
+        #chat-container { width: 950px; height: 600px; background: #333; border: 2px solid #444; display: flex; flex-direction: column; }
+        #top-gradient { height: 12px; width: 100%; background: linear-gradient(to right, #00ff00, #ffff00, #ff0000); }
         
-        /* Action Bar (Butonlar) */
-        #action-bar { background: #444; padding: 5px; display: flex; gap: 5px; border-bottom: 1px solid #222; align-items: center; }
-        button { background: linear-gradient(to bottom, #666, #333); border: 1px solid #000; color: #fff; padding: 3px 12px; font-size: 11px; cursor: pointer; border-radius: 2px; }
-        button:hover { background: #555; }
-        .btn-blue { color: #5bc0de; }
-        .btn-yellow { color: #f0ad4e; }
-
-        /* Ana Alan */
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 5px; gap: 5px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 10px; overflow-y: auto; font-size: 13px; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 10px; font-size: 12px; overflow-y: auto; }
         
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 10px; overflow-y: auto; font-size: 13px; line-height: 1.5; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 10px; font-size: 12px; color: #888; }
-        
-        /* Mesaj Yazma Alanı */
-        #input-area { background: #333; padding: 10px; display: flex; gap: 5px; border-top: 1px solid #444; }
-        input { flex: 1; background: #000; border: 1px solid #555; color: #fff; padding: 8px; outline: none; }
-        input:focus { border-color: #00ff00; }
+        .msg-line { margin-bottom: 5px; border-bottom: 1px solid #111; }
+        .nick { color: #00ff00; font-weight: bold; }
+        .sys-msg { color: #888; font-style: italic; font-size: 11px; }
+        .user-item { color: #5bc0de; padding: 2px 0; border-bottom: 1px solid #222; }
 
-        /* Mesaj Stilleri */
-        .msg-line { margin-bottom: 4px; border-bottom: 1px solid #111; padding-bottom: 2px; }
-        .nick { color: #00ff00; font-weight: bold; margin-right: 5px; }
-        .time { color: #555; font-size: 10px; margin-left: 10px; }
+        input { background: #000; border: 1px solid #555; color: #fff; padding: 8px; }
+        button { background: linear-gradient(to bottom, #666, #333); color: #fff; padding: 5px 15px; cursor: pointer; border: 1px solid #000; }
     </style>
 </head>
 <body>
 
+<div id="login-overlay">
+    <div id="login-box">
+        <h3>Hoşgeldiniz</h3><br>
+        <input type="text" id="nick-input" placeholder="Nickinizi yazın..." maxlength="15"><br><br>
+        <button onclick="joinChat()">Sohbete Başla</button>
+    </div>
+</div>
+
 <div id="chat-container">
     <div id="top-gradient"></div>
-    
-    <div id="action-bar">
-        <button>💬 Chat</button>
-        <button>🔍 Zoom+</button>
-        <button>🔍 Zoom-</button>
-        <div style="flex:1"></div>
-        <button class="btn-yellow">🎨 Color</button>
-        <button>🔊 Sound</button>
-        <button class="btn-blue">➡ Login</button>
-    </div>
-
     <div id="main-area">
-        <div id="messages" id="message-box"></div>
+        <div id="messages"></div>
         <div id="user-list">
-            <b style="color:#aaa">Kullanıcılar</b><br><br>
-            <div id="online-users">• Misafir (Sen)</div>
+            <b style="color:#f0ad4e">Online Dinleyiciler</b><hr style="border:0; border-top:1px solid #444; margin:5px 0;">
+            <div id="users"></div>
         </div>
     </div>
-
-    <form id="form" id="input-area" style="display:flex; padding:10px; background:#333;">
-        <input id="input" autocomplete="off" placeholder="Mesajınızı buraya yazın..." />
-        <button type="submit" style="padding: 0 20px;">GÖNDER</button>
+    <form id="form" style="display:flex; padding:10px; background:#333;">
+        <input id="input" style="flex:1" autocomplete="off" placeholder="Mesaj gönder..." />
+        <button type="submit">GÖNDER</button>
     </form>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var form = document.getElementById('form');
-    var input = document.getElementById('input');
-    var msgBox = document.getElementById('messages');
+    
+    function joinChat() {
+        var nick = document.getElementById('nick-input').value;
+        if(nick.trim() != "") {
+            socket.emit('join', nick);
+            document.getElementById('login-overlay').style.display = 'none';
+        }
+    }
 
-    form.addEventListener('submit', function(e) {
+    document.getElementById('form').addEventListener('submit', function(e) {
         e.preventDefault();
+        var input = document.getElementById('input');
         if (input.value) {
             socket.emit('chat message', input.value);
             input.value = '';
@@ -84,12 +76,24 @@
     socket.on('chat message', function(data) {
         var div = document.createElement('div');
         div.className = 'msg-line';
-        var now = new Date();
-        var timeStr = now.getHours() + ":" + (now.getMinutes()<10?'0':'') + now.getMinutes();
-        
-        div.innerHTML = `<span class="nick">${data.user}:</span> <span>${data.text}</span> <span class="time">(${timeStr})</span>`;
-        msgBox.appendChild(div);
-        msgBox.scrollTop = msgBox.scrollHeight;
+        if(data.system) {
+            div.innerHTML = `<span class="sys-msg">${data.text}</span>`;
+        } else {
+            div.innerHTML = `<span class="nick">${data.user}:</span> ${data.text}`;
+        }
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+
+    socket.on('user list', function(userNames) {
+        var userDiv = document.getElementById('users');
+        userDiv.innerHTML = '';
+        userNames.forEach(function(u) {
+            var item = document.createElement('div');
+            item.className = 'user-item';
+            item.innerHTML = '• ' + u;
+            userDiv.appendChild(item);
+        });
     });
 </script>
 </body>
