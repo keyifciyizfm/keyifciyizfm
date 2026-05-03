@@ -9,31 +9,45 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let users = {}; // Bağlı kullanıcıları burada tutacağız
+let users = {}; 
 
 io.on('connection', (socket) => {
-    // Kullanıcı giriş yaptığında
-    socket.on('join', (nick) => {
-        socket.nick = nick || "Misafir-" + Math.floor(Math.random() * 100);
-        users[socket.id] = socket.nick;
+    socket.on('join', (data) => {
+        socket.nick = data.nick || "Misafir";
+        socket.color = "#2ecc71"; // Varsayılan renk yeşil
+        users[socket.id] = { nick: socket.nick, color: socket.color };
         
-        // Herkese güncel listeyi ve giriş mesajını gönder
         io.emit('user list', Object.values(users));
-        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} aramıza katıldı!`, system: true });
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    socket.on('chat message', (msg) => {
-        io.emit('chat message', { user: socket.nick, text: msg });
+    // Renk değişim komutu
+    socket.on('change color', (newColor) => {
+        if (users[socket.id]) {
+            users[socket.id].color = newColor;
+            socket.color = newColor;
+            io.emit('user list', Object.values(users));
+        }
+    });
+
+    socket.on('chat message', (data) => {
+        io.emit('chat message', { 
+            user: socket.nick, 
+            text: data.text, 
+            color: socket.color, 
+            size: data.size 
+        });
     });
 
     socket.on('disconnect', () => {
-        if (socket.nick) {
+        if (users[socket.id]) {
+            const nick = users[socket.id].nick;
             delete users[socket.id];
             io.emit('user list', Object.values(users));
-            io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} ayrıldı.`, system: true });
+            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo yayında: ${PORT}`));
+server.listen(PORT, () => console.log(`Radyo Yayında!`));
