@@ -1,36 +1,39 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-let users = {};
+// En üste boş bir engellenenler listesi ekle
+let bannedUsers = []; 
 
 io.on('connection', (socket) => {
-    socket.on('login', (data) => {
-        // Basit bir admin kontrolü (Geliştirmek için DB eklenebilir)
-        let role = (data.password === "admin123") ? "SÜPER ADMİN" : "ÜYE";
-        users[socket.id] = { username: data.username, role: role };
-        
-        io.emit('userList', Object.values(users));
-        socket.emit('loginSuccess', { role: role });
+    socket.on('join', (data) => {
+        // Giriş yapmaya çalışan engelli mi?
+        if (bannedUsers.includes(data.username)) {
+            return socket.emit('errorMsg', 'Bu odaya girişiniz engellenmiştir.');
+        }
+
+        let role = "Üye";
+        if (data.password === "admin123") role = "SÜPER ADMİN";
+        // ... geri kalan join işlemleri ...
     });
 
-    socket.on('chatMessage', (msg) => {
-        const user = users[socket.id];
-        io.emit('message', { user: user.username, role: user.role, text: msg });
-    });
+    // ENGELLEME KOMUTU (Sadece Adminler için)
+    socket.on('banUser', (targetUsername) => {
+        const admin = connectedUsers[socket.id];
+        if (admin && admin.role === "SÜPER ADMİN") {
+            bannedUsers.push(targetUsername);
+            
+            // Engellenen kişiyi bul ve bağlantısını kes
+            const targetSocketId = Object.keys(connectedUsers).find(
+                id => connectedUsers[id].username === targetUsername
+            );
 
-    socket.on('disconnect', () => {
-        delete users[socket.id];
-        io.emit('userList', Object.values(users));
+            if (targetSocketId) {
+                io.to(targetSocketId).emit('banned', 'Admin tarafından engellendiniz.');
+                io.sockets.sockets.get(targetSocketId).disconnect();
+            }
+
+            io.emit('message', {
+                user: 'Sistem',
+                text: `${targetUsername} sistemden uzaklaştırıldı.`,
+                type: 'system'
+            });
+        }
     });
 });
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server ${PORT} portunda aktif.`));
