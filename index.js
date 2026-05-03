@@ -19,8 +19,8 @@ io.on('connection', (socket) => {
     const userIP = socket.handshake.address;
 
     socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz yasaklanmıştır!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Admin Şifresi Hatalı!');
+        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
+        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Şifre Hatalı!');
 
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
@@ -59,10 +59,7 @@ io.on('connection', (socket) => {
     socket.on('chat message', (data) => {
         if (activeUsers[socket.id]) {
             const u = activeUsers[socket.id];
-            io.emit('chat message', { 
-                user: u.nick, role: u.role, text: data.text, 
-                color: data.color || u.color, style: data.style 
-            });
+            io.emit('chat message', { user: u.nick, role: u.role, text: data.text, color: data.color || u.color, style: data.style });
         }
     });
 
