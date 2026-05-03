@@ -11,17 +11,36 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
 
+// Emoji kodlarını görsele çeviren fonksiyon
+function parseEmojis(text) {
+    const emojiMap = {
+        ":smile:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg",
+        ":joy:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg",
+        ":heart:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg",
+        ":fire:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg",
+        ":microphone:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg",
+        ":cool:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg",
+        ":thumbsup:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg",
+        ":rose:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"
+    };
+
+    let newText = text;
+    for (const [code, url] of Object.entries(emojiMap)) {
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:20px; height:20px; vertical-align:middle; margin:0 2px;">`);
+    }
+    return newText;
+}
+
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         socket.nick = data.nick || "Misafir";
-        socket.color = "#2ecc71"; // Varsayılan renk yeşil
+        socket.color = "#2ecc71";
         users[socket.id] = { nick: socket.nick, color: socket.color };
         
         io.emit('user list', Object.values(users));
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    // Renk değişim komutu
     socket.on('change color', (newColor) => {
         if (users[socket.id]) {
             users[socket.id].color = newColor;
@@ -31,11 +50,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chat message', (data) => {
+        // Gelen metni sunucuda emojilere çevirip geri gönderiyoruz
+        const cleanText = parseEmojis(data.text); 
         io.emit('chat message', { 
             user: socket.nick, 
-            text: data.text, 
+            text: cleanText, 
             color: socket.color, 
-            size: data.size 
+            style: data.style 
         });
     });
 
