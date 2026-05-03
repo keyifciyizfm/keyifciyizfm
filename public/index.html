@@ -1,42 +1,75 @@
-<div id="login-overlay">
-    <div id="login-box">
-        <h3 style="color:#f1c40f; margin-bottom:15px;">Sohbete Giriş</h3>
-        <input id="nick-input" class="auth-input" placeholder="Nickiniz" oninput="checkAdmin(this.value)">
-        <div id="admin-pass-area" style="display:none;">
-            <input id="pass-input" type="password" class="auth-input" placeholder="Yönetici Şifresi">
-        </div>
-        <button class="f-btn" style="width:100%; margin-top:10px;" onclick="joinChat()">ODAYA GİR</button>
-        <p id="msg" style="color:red; font-size:12px; margin-top:10px;"></p>
-    </div>
-</div>
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-<script>
-    // Bu fonksiyonu script kısmına ekle
-    function checkAdmin(val) {
-        // Eğer nick "Halil" ise şifre kutusunu aç
-        document.getElementById('admin-pass-area').style.display = (val === "Halil") ? "block" : "none";
-    }
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-    function joinChat() {
-        var n = document.getElementById('nick-input').value.trim();
-        var p = document.getElementById('pass-input').value.trim();
-        if(!n) return;
-        socket.emit('join', { nick: n, password: p });
-    }
+app.use(express.static(path.join(__dirname, 'public')));
 
-    socket.on('auth error', (m) => document.getElementById('msg').innerText = m);
-    
-    socket.on('login success', (d) => { 
-        myRole = d.role; 
-        myNick = d.nick;
-        document.getElementById('login-overlay').style.display='none'; 
+let activeUsers = {}; 
+let bannedIPs = []; 
+
+// SENİN BİLGİLERİN
+const adminNick = "Halil"; 
+const adminPass = "123456"; 
+
+io.on('connection', (socket) => {
+    const userIP = socket.handshake.address;
+
+    socket.on('join', (data) => {
+        if (bannedIPs.includes(userIP)) {
+            return socket.emit('auth error', 'Bu odaya girişiniz engellenmiştir!');
+        }
+
+        if (data.nick === adminNick && data.password !== adminPass) {
+            return socket.emit('auth error', 'Yönetici şifresi hatalı!');
+        }
+
+        socket.nick = data.nick || "Misafir";
+        socket.role = (data.nick === adminNick) ? 'Yönetici' : 'Dinleyici';
+        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+        
+        activeUsers[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
+        
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        io.emit('user list', Object.values(activeUsers));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı.`, system: true });
     });
 
-    // Daha önceki adm() fonksiyonunu da koru:
-    function adm(t) {
-        if(myRole !== 'Yönetici' || t === myNick) return;
-        var c = prompt(t + " için:\n1: At (Kick)\n2: Yasakla (IP Ban)");
-        if(c === "1") socket.emit('admin command', {action: 'kick', targetNick: t});
-        if(c === "2") socket.emit('admin command', {action: 'ban', targetNick: t});
-    }
-</script>
+    socket.on('admin command', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
+        
+        if (targetId) {
+            if (data.action === 'kick') {
+                io.to(targetId).emit('force logout', 'Yönetici tarafından atıldınız!');
+                io.sockets.sockets.get(targetId).disconnect();
+            } else if (data.action === 'ban') {
+                bannedIPs.push(activeUsers[targetId].ip);
+                io.to(targetId).emit('force logout', 'Süresiz engellendiniz!');
+                io.sockets.sockets.get(targetId).disconnect();
+            }
+        }
+    });
+
+    socket.on('chat message', (data) => {
+        if (activeUsers[socket.id]) {
+            io.emit('chat message', { 
+                user: socket.nick, role: socket.role, 
+                text: data.text, color: data.color, style: data.style 
+            });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        if (activeUsers[socket.id]) {
+            delete activeUsers[socket.id];
+            io.emit('user list', Object.values(activeUsers));
+        }
+    });
+});
+
+server.listen(process.env.PORT || 3000);
