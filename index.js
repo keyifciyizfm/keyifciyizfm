@@ -12,7 +12,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 let activeUsers = {}; 
 let bannedIPs = []; 
 
-// ANA YÖNETİCİ BİLGİLERİ
 const masterNick = "Halil"; 
 const masterPass = "123456"; 
 
@@ -20,57 +19,49 @@ io.on('connection', (socket) => {
     const userIP = socket.handshake.address;
 
     socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Engellendiniz!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
+        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz yasaklanmıştır!');
+        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Admin Şifresi Hatalı!');
 
         socket.nick = data.nick || "Misafir";
-        // Sadece Halil "Yönetici" başlar, diğerleri "Dinleyici"
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
         
         activeUsers[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
-        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(activeUsers));
         io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı.`, system: true });
     });
 
     socket.on('admin command', (data) => {
-        // Komutu veren kişinin yetkisi var mı? (Yönetici veya Admin olmalı)
         if (socket.role !== 'Yönetici' && socket.role !== 'Admin') return;
-
-        const targetSocketId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
-        if (!targetSocketId) return;
-        const targetSocket = io.sockets.sockets.get(targetSocketId);
+        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
+        if (!targetId) return;
 
         if (data.action === 'kick') {
-            io.to(targetSocketId).emit('force logout', 'Odadan atıldınız!');
-            targetSocket.disconnect();
+            io.to(targetId).emit('force logout', 'Atıldınız!');
+            io.sockets.sockets.get(targetId)?.disconnect();
         } else if (data.action === 'ban') {
-            bannedIPs.push(activeUsers[targetSocketId].ip);
-            io.to(targetSocketId).emit('force logout', 'Süresiz banlandınız!');
-            targetSocket.disconnect();
+            bannedIPs.push(activeUsers[targetId].ip);
+            io.to(targetId).emit('force logout', 'Banlandınız!');
+            io.sockets.sockets.get(targetId)?.disconnect();
         } else if (data.action === 'make_dj') {
-            activeUsers[targetSocketId].role = 'DJ';
-            activeUsers[targetSocketId].color = '#f1c40f'; // Altın sarısı
-            if(targetSocket) targetSocket.role = 'DJ';
+            activeUsers[targetId].role = 'DJ';
+            activeUsers[targetId].color = '#f1c40f';
             io.emit('user list', Object.values(activeUsers));
         } else if (data.action === 'make_admin') {
-            // Sadece ana yönetici birini Admin yapabilir
             if (socket.role !== 'Yönetici') return;
-            activeUsers[targetSocketId].role = 'Admin';
-            activeUsers[targetSocketId].color = '#e67e22'; // Turuncu
-            if(targetSocket) targetSocket.role = 'Admin';
+            activeUsers[targetId].role = 'Admin';
+            activeUsers[targetId].color = '#e67e22';
             io.emit('user list', Object.values(activeUsers));
         }
     });
 
     socket.on('chat message', (data) => {
         if (activeUsers[socket.id]) {
-            const user = activeUsers[socket.id];
+            const u = activeUsers[socket.id];
             io.emit('chat message', { 
-                user: user.nick, role: user.role, 
-                text: data.text, color: data.color || user.color, style: data.style 
+                user: u.nick, role: u.role, text: data.text, 
+                color: data.color || u.color, style: data.style 
             });
         }
     });
