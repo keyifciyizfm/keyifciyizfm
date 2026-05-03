@@ -12,19 +12,17 @@
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; gap: 5px; margin-right: 5px; }
         .f-btn.active { background: #2ecc71; color: #000; }
 
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        .user-item { padding: 8px 0; border-bottom: 1px solid #222; display: flex; align-items: center; }
+        .user-item { padding: 6px 0; border-bottom: 1px solid #222; display: flex; align-items: center; gap: 5px; }
         
-        .rank-text { font-family: 'Georgia', serif; font-style: italic; font-size: 11px; margin-left: 12px; font-weight: bold; }
-
-        #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; box-shadow: 0 -5px 20px #000; z-index: 50; }
+        .rank-text { font-family: 'Georgia', serif; font-style: italic; font-size: 11px; margin-left: 10px; font-weight: bold; }
+        #emoji-panel { display: none; position: absolute; bottom: 60px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 12px; width: 280px; border-radius: 5px; z-index: 50; }
         .emoji-item { cursor: pointer; width: 30px; height: 30px; }
-        .emoji-item img { width: 100%; height: 100%; }
 
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
@@ -47,12 +45,10 @@
 <div id="chat-container">
     <div id="top-gradient"></div>
     <div id="action-bar">
-        <button class="f-btn" onclick="toggleEmojiPanel()">😊 Emojiler</button>
-        <div style="display: flex; gap: 5px; margin-left: 20px; border-left: 1px solid #555; padding-left: 15px;">
-            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
-            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-        </div>
-        <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:30px; height:22px; margin-left:15px;">
+        <button class="f-btn" onclick="toggleEmoji()">😊 Emojiler</button>
+        <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+        <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
+        <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:30px; height:22px; margin-left:10px; cursor:pointer;">
         <div style="flex: 1;"></div>
         <button class="f-btn" style="background: #e74c3c;" onclick="location.reload()">ÇIKIŞ</button>
     </div>
@@ -63,9 +59,9 @@
     </div>
 
     <div id="emoji-panel">
-        <span class="emoji-item" onclick="addEmojiCode(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
-        <span class="emoji-item" onclick="addEmojiCode(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
+        <span class="emoji-item" onclick="addE(':smile:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg"></span>
+        <span class="emoji-item" onclick="addE(':joy:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg"></span>
+        <span class="emoji-item" onclick="addE(':heart:')"><img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg"></span>
     </div>
 
     <form id="form" onsubmit="sendMessage(event)">
@@ -87,8 +83,8 @@
     socket.on('auth error', (m) => { document.getElementById('error-msg').innerText = m; });
     socket.on('login success', () => { document.getElementById('login-overlay').style.display = 'none'; });
 
-    function toggleEmojiPanel() { var p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
-    function addEmojiCode(c) { document.getElementById('input').value += c + ' '; document.getElementById('input').focus(); }
+    function toggleEmoji() { var p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
+    function addE(c) { document.getElementById('input').value += c + ' '; document.getElementById('input').focus(); }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function changeColor(c) { selectedColor = c; document.getElementById('input').style.color = c; }
 
@@ -109,7 +105,7 @@
             div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
         } else {
             let s = data.style || {};
-            div.innerHTML = `<b style="color:${data.color}">${data.user}:</b> <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'};">${data.text}</span>`;
+            div.innerHTML = `<b style="color:${data.color}">👤 ${data.user}:</b> <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'};">${data.text}</span>`;
         }
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
