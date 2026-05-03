@@ -1,30 +1,18 @@
-<div id="emoji-panel" style="display: none; position: absolute; bottom: 55px; left: 10px; background: #333; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 220px; border-radius: 5px; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); z-index: 1000;">
-    <span class="emoji-item" onclick="addEmojiCode(':smile:')" style="font-size: 24px; cursor: pointer;">😊</span>
-    <span class="emoji-item" onclick="addEmojiCode(':joy:')" style="font-size: 24px; cursor: pointer;">😂</span>
-    <span class="emoji-item" onclick="addEmojiCode(':cool:')" style="font-size: 24px; cursor: pointer;">😎</span>
-    <span class="emoji-item" onclick="addEmojiCode(':fire:')" style="font-size: 24px; cursor: pointer;">🔥</span>
-    <span class="emoji-item" onclick="addEmojiCode(':thumbsup:')" style="font-size: 24px; cursor: pointer;">👍</span>
-    <span class="emoji-item" onclick="addEmojiCode(':microphone:')" style="font-size: 24px; cursor: pointer;">🎙️</span>
-    <span class="emoji-item" onclick="addEmojiCode(':heart:')" style="font-size: 24px; cursor: pointer;">❤️</span>
-    <span class="emoji-item" onclick="addEmojiCode(':rose:')" style="font-size: 24px; cursor: pointer;">🌹</span>
+<div id="emoji-panel" style="display: none; position: absolute; bottom: 60px; left: 10px; background: #333; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 220px; border-radius: 5px; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); z-index: 1000;">
+    <span onclick="addEmoji('😊')" style="font-size: 25px; cursor: pointer;">😊</span>
+    <span onclick="addEmoji('😂')" style="font-size: 25px; cursor: pointer;">😂</span>
+    <span onclick="addEmoji('😉')" style="font-size: 25px; cursor: pointer;">😉</span>
+    <span onclick="addEmoji('😍')" style="font-size: 25px; cursor: pointer;">😍</span>
+    <span onclick="addEmoji('😎')" style="font-size: 25px; cursor: pointer;">😎</span>
+    <span onclick="addEmoji('🔥')" style="font-size: 25px; cursor: pointer;">🔥</span>
+    <span onclick="addEmoji('❤️')" style="font-size: 25px; cursor: pointer;">❤️</span>
+    <span onclick="addEmoji('🌹')" style="font-size: 25px; cursor: pointer;">🌹</span>
 </div>
 
 <script>
-    // Mesajları ekrana yazdıran fonksiyonu da sadeleştiriyoruz
-    socket.on('chat message', function(data) {
-        var div = document.createElement('div');
-        div.style.marginBottom = "5px";
-        if(data.system) {
-            div.innerHTML = `<span style="color:#777; font-size:11px;"><i>${data.text}</i></span>`;
-        } else {
-            let s = data.style || {};
-            div.innerHTML = `
-                <span style="font-weight:bold; color:${data.color}">${data.user}:</span> 
-                <span style="color:${data.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'}; word-wrap: break-word; font-size: inherit;">
-                    ${data.text}
-                </span>`;
-        }
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    });
+    // Yeni basit fonksiyon
+    function addEmoji(emoji) {
+        document.getElementById('input').value += emoji; 
+        document.getElementById('input').focus();
+    }
 </script>
