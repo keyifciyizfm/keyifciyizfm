@@ -5,8 +5,10 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+// CORS ayarlarını Render uyumlu hale getirdik
 const io = new Server(server, { 
-    maxHttpBufferSize: 1e8 // 100MB müzik dosyaları için limit
+    maxHttpBufferSize: 1e8,
+    cors: { origin: "*" } 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -14,25 +16,34 @@ app.use(express.static(path.join(__dirname, 'public')));
 let connectedUsers = {};
 
 io.on('connection', (socket) => {
+    console.log('Bir kullanıcı bağlandı:', socket.id);
+
     socket.on('join', (data) => {
-        // Şifre 123 ise DJ yetkisi (SÜPER ADMİN) verir
-        let role = (data.password === "123") ? "SÜPER ADMİN" : "DİNLEYİCİ";
-        connectedUsers[socket.id] = { username: data.username, role: role, id: socket.id };
-        socket.emit('loginApproved', connectedUsers[socket.id]);
+        const isAdmin = (data.password === "123");
+        connectedUsers[socket.id] = { 
+            username: data.username || "Misafir", 
+            role: isAdmin ? "ADMIN" : "USER",
+            title: isAdmin ? "[DJ]" : "[Üye]",
+            muted: false,
+            id: socket.id 
+        };
+        socket.emit('authStatus', { role: connectedUsers[socket.id].role });
         io.emit('updateUserList', Object.values(connectedUsers));
+        console.log(`${data.username} giriş yaptı.`);
     });
 
-    // DJ'den gelen ses verisini (Müzik/Mikrofon) herkese dağıtır
-    socket.on('audioStream', (data) => {
-        socket.broadcast.emit('audioPlay', data);
-    });
-
-    socket.on('sendMessage', (msg) => {
+    socket.on('sendMessage', (data) => {
         const user = connectedUsers[socket.id];
-        if (user) {
-            io.emit('message', { user: user.username, role: user.role, text: msg });
+        if(user && !user.muted) {
+            io.emit('message', { 
+                user: `${user.title} ${user.username}`, 
+                text: data.text,
+                format: data.format 
+            });
         }
     });
+
+    socket.on('audioStream', (data) => { socket.broadcast.emit('audioPlay', data); });
 
     socket.on('disconnect', () => {
         delete connectedUsers[socket.id];
@@ -40,5 +51,6 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = 3000;
-server.listen(PORT, () => console.log(`Radyo http://localhost:${PORT} adresinde aktif!`));
+// Render için PORT ayarı
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda aktif.`));
