@@ -10,23 +10,30 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Kullanıcı veritabanını yükle (users.json)
-let dbFile = './users.json';
-if (!fs.existsSync(dbFile)) fs.writeFileSync(dbFile, JSON.stringify({}));
+// Kullanıcı verilerini saklayacak dosya yolu
+const dbFile = './users.json';
+
+// Dosya yoksa oluştur
+if (!fs.existsSync(dbFile)) {
+    fs.writeFileSync(dbFile, JSON.stringify({}));
+}
+
+// Kayıtlı kullanıcıları dosyadan oku
 let registeredUsers = JSON.parse(fs.readFileSync(dbFile));
 
 let activeUsers = {}; 
 
 io.on('connection', (socket) => {
     
-    // KAYIT OLMA İŞLEMİ
+    // YENİ KAYIT İŞLEMİ
     socket.on('register', (data) => {
         if (registeredUsers[data.nick]) {
             socket.emit('auth error', 'Bu kullanıcı adı zaten alınmış!');
         } else {
+            // Şifreyi ve nicki kaydet
             registeredUsers[data.nick] = { password: data.password };
             fs.writeFileSync(dbFile, JSON.stringify(registeredUsers));
-            socket.emit('auth success', 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.');
+            socket.emit('auth success', 'Kayıt başarılı! Giriş yapabilirsiniz.');
         }
     });
 
@@ -35,10 +42,10 @@ io.on('connection', (socket) => {
         let user = registeredUsers[data.nick];
         if (user && user.password === data.password) {
             socket.nick = data.nick;
-            socket.color = "#2ecc71";
+            socket.color = "#2ecc71"; // Varsayılan renk
             activeUsers[socket.id] = { nick: socket.nick, color: socket.color };
             
-            socket.emit('login success', { nick: socket.nick });
+            socket.emit('login success');
             io.emit('user list', Object.values(activeUsers));
             io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} odaya giriş yaptı!`, system: true });
         } else {
@@ -46,6 +53,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    // MESAJLAŞMA
     socket.on('chat message', (data) => {
         if (activeUsers[socket.id]) {
             io.emit('chat message', { 
@@ -57,6 +65,16 @@ io.on('connection', (socket) => {
         }
     });
 
+    // RENK DEĞİŞTİRME
+    socket.on('change color', (newColor) => {
+        if (activeUsers[socket.id]) {
+            activeUsers[socket.id].color = newColor;
+            socket.color = newColor;
+            io.emit('user list', Object.values(activeUsers));
+        }
+    });
+
+    // AYRILMA
     socket.on('disconnect', () => {
         if (activeUsers[socket.id]) {
             const nick = activeUsers[socket.id].nick;
@@ -68,4 +86,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sohbet ve Kayıt Sistemi Aktif!`));
+server.listen(PORT, () => console.log(`Radyo Paneli ${PORT} portunda hazır!`));
