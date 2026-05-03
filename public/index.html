@@ -1,80 +1,278 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>KeyifciyizFM - Giriş</title>
+    <meta charset="UTF-8">
+    <title>KeyifciyizFM | Mixer Console v4.0</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: #121212; color: white; font-family: sans-serif; text-align: center; }
-        #auth-container { margin-top: 100px; }
-        #chat-container { display: none; } /* Giriş yapana kadar gizli */
-        .form-box { background: #222; padding: 20px; display: inline-block; border-radius: 10px; border: 1px solid #444; }
-        input { display: block; margin: 10px auto; padding: 10px; width: 200px; background: #333; color: white; border: 1px solid #555; }
-        button { padding: 10px 20px; cursor: pointer; background: #0066cc; color: white; border: none; }
-        #chat-box { height: 400px; overflow-y: auto; background: black; text-align: left; padding: 20px; border: 1px solid #333; }
+        :root {
+            --mixer-bg: #222222;
+            --panel-bg: #151515;
+            --fader-red: #ff3333;
+            --led-green: #00ff00;
+            --display-bg: #050a05;
+        }
+
+        body {
+            margin: 0;
+            background: #111;
+            color: #ccc;
+            font-family: 'Courier New', Courier, monospace; /* Teknik cihaz havası */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        /* Mikser Ana Kasa */
+        .mixer-console {
+            width: 1000px;
+            height: 700px;
+            background: var(--mixer-bg);
+            border: 10px solid #333;
+            border-radius: 20px;
+            box-shadow: inset 0 0 50px #000, 20px 20px 50px #000;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Üst Bölüm - Peak Meter ve Ekran */
+        .mixer-top {
+            height: 150px;
+            background: #1a1a1a;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+            border-bottom: 4px solid #111;
+        }
+
+        .lcd-screen {
+            flex: 2;
+            background: var(--display-bg);
+            border: 3px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            color: var(--led-green);
+            text-shadow: 0 0 5px var(--led-green);
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .peak-meter {
+            flex: 1;
+            background: #000;
+            display: flex;
+            gap: 4px;
+            padding: 5px;
+            border: 2px solid #333;
+        }
+
+        .led-bar { flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; }
+        .led { height: 6px; background: #111; }
+        .led.active { background: var(--led-green); box-shadow: 0 0 5px var(--led-green); }
+
+        /* Ana Bölüm */
+        .mixer-body {
+            flex: 1;
+            display: flex;
+            background: repeating-linear-gradient(90deg, transparent, transparent 199px, #111 200px);
+        }
+
+        /* Chat Penceresi (Mixer'ın Merkez Ekranı) */
+        .chat-module {
+            flex: 3;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-window {
+            flex: 1;
+            background: #000;
+            border: 5px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            color: #00ff00;
+        }
+
+        /* Kullanıcı Listesi (Kanal Şeridi) */
+        .user-module {
+            flex: 1;
+            background: #181818;
+            border-left: 4px solid #111;
+            padding: 15px;
+        }
+
+        /* Alt Bölüm - Kontroller ve Faderlar */
+        .mixer-bottom {
+            height: 200px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 20px;
+        }
+
+        .control-knob {
+            width: 50px; height: 50px;
+            background: radial-gradient(circle, #444, #111);
+            border-radius: 50%;
+            border: 2px solid #555;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .control-knob::after {
+            content: "";
+            position: absolute;
+            top: 5px; left: 50%;
+            width: 4px; height: 10px;
+            background: var(--fader-red);
+            transform: translateX(-50%);
+        }
+
+        .fader-track {
+            width: 10px; height: 120px;
+            background: #000;
+            border-radius: 5px;
+            position: relative;
+        }
+
+        .fader-handle {
+            width: 30px; height: 50px;
+            background: #444;
+            border: 2px solid #666;
+            position: absolute;
+            left: -10px;
+            top: 30px;
+            border-radius: 3px;
+            box-shadow: 0 5px 10px #000;
+        }
+
+        /* Giriş ve Butonlar */
+        .input-group {
+            position: absolute;
+            bottom: 25px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #messageInput {
+            width: 60%;
+            background: #000;
+            border: 2px solid #00ff00;
+            padding: 12px;
+            color: #00ff00;
+            border-radius: 5px;
+        }
+
+        .btn-mix {
+            padding: 10px 20px;
+            background: var(--fader-red);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px #990000;
+        }
+
+        .btn-mix:active { transform: translateY(4px); box-shadow: none; }
+
+        .msg { margin-bottom: 5px; border-bottom: 1px border-style: dotted; border-color: #222; }
     </style>
 </head>
 <body>
 
-<div id="auth-container">
-    <h2>KeyifciyizFM'e Hoşgeldiniz</h2>
-    <div class="form-box">
-        <input type="text" id="user" placeholder="Kullanıcı Adı">
-        <input type="password" id="pass" placeholder="Şifre">
-        <button onclick="login()">Giriş Yap</button>
-        <button onclick="register()" style="background: #444;">Kayıt Ol</button>
+<div class="mixer-console">
+    <div class="mixer-top">
+        <div class="lcd-screen">
+            <marquee>KEYIFCIYIZ FM - MIXER CONSOLE v4.0 - YAYINDA: DJ KEYIFCI</marquee>
+        </div>
+        <div class="peak-meter">
+            <div class="led-bar">
+                <div class="led active"></div><div class="led active"></div><div class="led active"></div><div class="led"></div><div class="led"></div>
+            </div>
+            <div class="led-bar">
+                <div class="led active"></div><div class="led active"></div><div class="led active"></div><div class="led active"></div><div class="led"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mixer-body">
+        <div class="chat-module">
+            <div id="chat-window">
+                <div class="msg">> SİSTEM: MİKSER BAĞLANTISI KURULDU...</div>
+            </div>
+        </div>
+        <div class="user-module">
+            <h5 style="color:var(--fader-red)">ONLINE CHANNELS</h5>
+            <div id="online-users" style="font-size: 0.8em;"></div>
+        </div>
+    </div>
+
+    <div class="mixer-bottom">
+        <div class="control-knob"></div>
+        <div class="control-knob"></div>
+        <div class="fader-track"><div class="fader-handle"></div></div>
+        <div class="fader-track"><div class="fader-handle" style="top: 60px;"></div></div>
+        <div class="control-knob"></div>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="messageInput" placeholder="Mesajınızı gönderin...">
+        <button class="btn-mix" onclick="sendMessage()">PUSH TO TALK</button>
     </div>
 </div>
 
-<div id="chat-container">
-    <h3>KeyifciyizFM Canlı Sohbet</h3>
-    <div id="chat-box"></div>
-    <input type="text" id="msgInput" placeholder="Mesaj yazın...">
-    <button onclick="send()">Gönder</button>
+<div id="auth-screen" style="position:fixed; inset:0; background:#111; z-index:9999; display:flex; align-items:center; justify-content:center;">
+    <div style="background:#222; padding:40px; border:5px solid #333; text-align:center;">
+        <h2 style="color:var(--led-green)">MIXER LOGIN</h2>
+        <input type="text" id="nick" placeholder="NICKNAME" style="padding:10px; margin:10px; background:#000; color:#00ff00; border:1px solid #00ff00;">
+        <button onclick="login()" style="padding:10px 20px; background:var(--led-green); color:#000; font-weight:bold; border:none; cursor:pointer;">CONNECT</button>
+    </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    let currentUsername = "";
     const socket = io();
+    let currentNick = "";
 
-    async function register() {
-        const u = document.getElementById('user').value;
-        const p = document.getElementById('pass').value;
-        await fetch('/register', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: u, password: p})
-        });
-        alert("Kayıt başarılı! Şimdi giriş yapabilirsiniz.");
-    }
-
-    async function login() {
-        const u = document.getElementById('user').value;
-        const p = document.getElementById('pass').value;
-        const res = await fetch('/login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({username: u, password: p})
-        });
-        const data = await res.json();
-        if(data.success) {
-            currentUsername = u;
-            document.getElementById('auth-container').style.display = 'none';
-            document.getElementById('chat-container').style.display = 'block';
-        } else {
-            alert(data.message);
+    function login() {
+        const n = document.getElementById('nick').value;
+        if(n) {
+            currentNick = n;
+            document.getElementById('auth-screen').style.display = 'none';
+            socket.emit('user joined', n);
         }
     }
 
-    function send() {
-        const text = document.getElementById('msgInput').value;
-        socket.emit('chat message', { user: currentUsername, text: text });
-        document.getElementById('msgInput').value = '';
+    function sendMessage() {
+        const inp = document.getElementById('messageInput');
+        if(inp.value.trim()) {
+            socket.emit('chat message', { user: currentNick, text: inp.value });
+            inp.value = "";
+        }
     }
 
     socket.on('chat message', (data) => {
+        const win = document.getElementById('chat-window');
         const div = document.createElement('div');
-        div.innerHTML = `<b>${data.user}:</b> ${data.text}`;
-        document.getElementById('chat-box').appendChild(div);
+        div.className = 'msg';
+        div.innerHTML = `<span style="color:#666">[${new Date().toLocaleTimeString()}]</span> <b>${data.user}:</b> ${data.text}`;
+        win.appendChild(div);
+        win.scrollTop = win.scrollHeight;
+    });
+
+    socket.on('update users', (list) => {
+        const uDiv = document.getElementById('online-users');
+        uDiv.innerHTML = list.map(u => `<div>● CH-${u.toUpperCase()}</div>`).join('');
     });
 </script>
 </body>
