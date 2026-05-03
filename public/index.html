@@ -1,33 +1,239 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keyifciyiz FM - Klasik Sohbet</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        /* Flatcast Klasik Tema Renkleri */
+        :root {
+            --fc-bg: #1e1e1e;
+            --fc-panel-bg: #2d2d2d;
+            --fc-text: #cccccc;
+            --fc-nick-self: #ffff00; /* Kendi nickin sarı */
+            --fc-nick-other: #add8e6; /* Diğerleri açık mavi */
+            --fc-accent: #f1c40f; /* Altın/Turuncu */
+            --fc-active-panel: #222;
+        }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+        body { 
+            background: var(--fc-bg); 
+            color: var(--fc-text); 
+            font-family: 'Tahoma', sans-serif; /* Klasik Flatcast yazı tipi */
+            font-size: 13px;
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            flex-direction: column; 
+        }
 
-app.use(express.static('public'));
+        /* GİRİŞ EKRANI */
+        #login-box { 
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9); 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; 
+        }
+        
+        #login-box input, #login-box button {
+            padding: 10px; margin: 5px; background: #333; border: 1px solid #444; color: #fff; border-radius: 3px; font-family: inherit;
+        }
+        
+        #login-box button {
+            background: var(--fc-accent); color: #000; font-weight: bold; cursor: pointer; border: none;
+        }
 
-io.on('connection', (socket) => {
-    // Yeni kullanıcı girişi
-    socket.on('join', (username) => {
-        socket.username = username;
-        io.emit('chat message', { user: 'SİSTEM', text: `${username} yayına bağlandı.`, type: 'system' });
+        /* ANA KONTEYNER */
+        #flatcast-container {
+            display: flex; flex: 1; overflow: hidden; padding: 5px;
+        }
+
+        /* KLASİK ARAÇ ÇUBUĞU */
+        .fc-toolbar {
+            background: var(--fc-panel-bg); 
+            padding: 5px; 
+            border: 1px solid #444; 
+            display: flex; 
+            gap: 2px; 
+            align-items: center;
+        }
+        
+        .fc-btn {
+            background: #444; border: 1px solid #555; color: #ccc; 
+            padding: 3px 8px; cursor: pointer; font-size: 11px; text-transform: uppercase;
+        }
+        
+        .fc-btn:hover { background: #555; }
+        
+        .fc-tools-separator { width: 1px; height: 15px; background: #555; margin: 0 3px; }
+
+        /* SOHBET VE KULLANICI LİSTESİ */
+        .fc-main {
+            flex: 1; 
+            background: var(--fc-active-panel); 
+            border: 1px solid #444; 
+            margin-right: 5px; 
+            display: flex; 
+            flex-direction: column;
+        }
+        
+        #messages { 
+            flex: 1; padding: 10px; overflow-y: auto; scroll-behavior: smooth;
+        }
+        
+        .msg-line { margin-bottom: 3px; display: block; }
+        
+        .msg-nick { color: var(--fc-nick-other); font-weight: bold; }
+        
+        .msg-self .msg-nick { color: var(--fc-nick-self); }
+        
+        .fc-sidebar {
+            width: 180px; 
+            background: var(--fc-panel-bg); 
+            border: 1px solid #444; 
+            display: flex; 
+            flex-direction: column;
+        }
+        
+        .fc-online-header { 
+            background: var(--fc-accent); color: #000; text-align: center; font-weight: bold; padding: 5px 0; font-size: 11px;
+        }
+        
+        #user-list { flex: 1; overflow-y: auto; padding: 5px; }
+        
+        .fc-user-item { padding: 2px; }
+        
+        .fc-user-nick { color: var(--fc-nick-other); font-size: 12px; }
+        
+        .fc-user-me { color: var(--fc-nick-self) !important; font-weight: bold; }
+
+        /* MESAJ GİRİŞ ALANI */
+        .fc-input-area {
+            background: var(--fc-panel-bg); 
+            padding: 5px; 
+            border-top: 1px solid #444; 
+            display: flex; gap: 5px;
+        }
+        
+        #m-input { 
+            flex: 1; background: #000; border: 1px solid #444; color: #fff; padding: 5px; font-family: inherit; font-size: 12px;
+        }
+        
+        #fc-send-btn { 
+            background: var(--fc-accent); border: none; color: #000; padding: 5px 12px; cursor: pointer; font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="login-box">
+    <h2 style="color:var(--fc-accent); font-family: Tahoma;">KEYİFCİYİZ FM</h2>
+    <input type="text" id="u-name" placeholder="Rumuz...">
+    <input type="password" id="u-pass" placeholder="Şifre (Opsiyonel)">
+    <button onclick="join()">Giriş Yap</button>
+</div>
+
+<div class="fc-toolbar">
+    <button class="fc-btn" onclick="alert('Sohbet Aktif!')">Chat</button>
+    <div class="fc-tools-separator"></div>
+    <div style="font-size:18px; cursor:pointer;" onclick="changeSize('up')">A+</div>
+    <div style="font-size:12px; cursor:pointer;" onclick="changeSize('down')">A-</div>
+    <div class="fc-tools-separator"></div>
+    <button class="fc-btn" onclick="changeColor()" style="color:#f39c12">Renk</button>
+    <button class="fc-btn" onclick="openEmoji()">Emoji</button>
+    <div class="fc-tools-separator"></div>
+    <div style="color:red; font-size:10px; border: 1px solid red; padding: 1px 3px;">CANLI</div>
+</div>
+
+<div id="flatcast-container">
+    <div class="fc-main">
+        <div id="messages"></div>
+    </div>
+    
+    <div class="fc-sidebar">
+        <div class="fc-online-header">ONLINE ÜYELER</div>
+        <div id="user-list"></div>
+    </div>
+</div>
+
+<div class="fc-input-area">
+    <input type="text" id="m-input" placeholder="Mesajınızı yazın..." onkeypress="if(event.key==='Enter') send()">
+    <button id="fc-send-btn" onclick="send()">GÖNDER</button>
+</div>
+
+<script>
+    const socket = io();
+    let myProfile = {};
+    let currentFontSize = 13; // Tahoma için klasik boyut
+
+    function join() {
+        const name = document.getElementById('u-name').value;
+        const pass = document.getElementById('u-pass').value;
+        if(name) socket.emit('join', { username: name, password: pass });
+    }
+
+    socket.on('loginApproved', (data) => {
+        myProfile = data;
+        document.getElementById('login-box').style.display = 'none';
     });
 
-    // Mesajlaşma
-    socket.on('chat message', (data) => {
-        io.emit('chat message', data);
+    socket.on('updateUserList', (users) => {
+        const list = document.getElementById('user-list');
+        list.innerHTML = '';
+        users.forEach(u => {
+            const isMe = u.username === myProfile.username;
+            const userClass = isMe ? "fc-user-nick fc-user-me" : "fc-user-nick";
+            const isMeAdmin = myProfile.role === "SÜPER ADMİN";
+            const click = (isMeAdmin && !isMe) ? `onclick="adminMenu('${u.id}', '${u.username}')" style="cursor:pointer; color:red"` : "";
+            list.innerHTML += `<div class="fc-user-item"><span ${click} class="${userClass}">${u.username}</span> <span class="role-tag" style="font-size:9px; background:#444; padding:1px 3px;">${u.role}</span></div>`;
+        });
     });
 
-    // Admin komutları (Yayın durdurma vb.)
-    socket.on('admin command', (cmd) => {
-        io.emit('system command', cmd);
-    });
-});
+    function adminMenu(tid, tname) {
+        const choice = prompt(`${tname} için işlem seç:\n1: DJ\n2: Yönetici\n3: Sorumlu\n4: Üye\n5: BANLA`);
+        if(choice === "1") socket.emit('changeRole', { targetId: tid, newRole: "DJ" });
+        if(choice === "2") socket.emit('changeRole', { targetId: tid, newRole: "YÖNETİCİ" });
+        if(choice === "3") socket.emit('changeRole', { targetId: tid, newRole: "SORUMLU" });
+        if(choice === "4") socket.emit('changeRole', { targetId: tid, newRole: "Üye" });
+        if(choice === "5") socket.emit('banUser', tname);
+    }
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu aktif: http://localhost:${PORT}`);
-});
+    socket.on('message', (d) => {
+        const m = document.getElementById('messages');
+        const isSelf = d.user === myProfile.username;
+        const selfClass = isSelf ? "msg-self" : "";
+        
+        m.innerHTML += `<div class="msg-line ${selfClass}"><span class="msg-nick">${d.user}:</span> <span class="msg-text">${d.text}</span></div>`;
+        m.scrollTop = m.scrollHeight;
+    });
+
+    socket.on('errorMsg', (m) => { alert(m); window.location.reload(); });
+
+    function send() {
+        const i = document.getElementById('m-input');
+        if(i.value) { socket.emit('sendMessage', i.value); i.value = ''; }
+    }
+
+    // Klasik Araçlar
+    function changeSize(dir) {
+        if(dir === 'up') currentFontSize += 2;
+        else currentFontSize -= 2;
+        if(currentFontSize < 11) currentFontSize = 11;
+        if(currentFontSize > 22) currentFontSize = 22;
+        document.getElementById('messages').style.fontSize = currentFontSize + "px";
+    }
+
+    function changeColor() {
+        const color = prompt("Yeni nick renginizi girin (örn: #ff00ff veya 'red'):");
+        if(color) {
+            document.querySelector(':root').style.setProperty('--fc-nick-other', color);
+            alert("Sadece sizin için nick renkleri değişti! (Sunucuda kalıcı olmaz)");
+        }
+    }
+
+    function openEmoji() {
+        alert("Klasik emoji paneli yakında!");
+    }
+</script>
+</body>
+</html>
