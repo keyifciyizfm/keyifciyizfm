@@ -9,70 +9,66 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let activeUsers = {}; 
-let bannedIPs = []; 
+let users = {}; 
 
-const masterNick = "Halil"; 
-const masterPass = "123456"; 
+// Emoji kodlarını görsele çeviren fonksiyon
+function parseEmojis(text) {
+    const emojiMap = {
+        ":smile:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60a.svg",
+        ":joy:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f602.svg",
+        ":heart:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/2764.svg",
+        ":fire:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f525.svg",
+        ":microphone:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f399.svg",
+        ":cool:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f60e.svg",
+        ":thumbsup:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f44d.svg",
+        ":rose:": "https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/1f339.svg"
+    };
+
+    let newText = text;
+    for (const [code, url] of Object.entries(emojiMap)) {
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:20px; height:20px; vertical-align:middle; margin:0 2px;">`);
+    }
+    return newText;
+}
 
 io.on('connection', (socket) => {
-    const userIP = socket.handshake.address;
-
     socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Engellendiniz!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Şifre Hatalı!');
-
         socket.nick = data.nick || "Misafir";
-        socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
-        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+        socket.color = "#2ecc71";
+        users[socket.id] = { nick: socket.nick, color: socket.color };
         
-        activeUsers[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
-        socket.emit('login success', { role: socket.role, nick: socket.nick });
-        io.emit('user list', Object.values(activeUsers));
-        // Buradaki sistem mesajını istersen silebilirsin, sadece giriş bilgisidir.
+        io.emit('user list', Object.values(users));
+        io.emit('chat message', { user: 'SİSTEM', text: `${socket.nick} bağlandı!`, system: true });
     });
 
-    socket.on('admin command', (data) => {
-        if (socket.role !== 'Yönetici' && socket.role !== 'Admin') return;
-        const targetId = Object.keys(activeUsers).find(id => activeUsers[id].nick === data.targetNick);
-        if (!targetId) return;
-
-        if (data.action === 'kick') {
-            io.to(targetId).emit('force logout', 'Atıldınız!');
-            io.sockets.sockets.get(targetId)?.disconnect();
-        } else if (data.action === 'ban') {
-            bannedIPs.push(activeUsers[targetId].ip);
-            io.to(targetId).emit('force logout', 'Banlandınız!');
-            io.sockets.sockets.get(targetId)?.disconnect();
-        } else if (data.action === 'make_dj') {
-            activeUsers[targetId].role = 'DJ';
-            activeUsers[targetId].color = '#f1c40f';
-            const tSock = io.sockets.sockets.get(targetId);
-            if(tSock) tSock.role = 'DJ';
-            io.emit('user list', Object.values(activeUsers));
-        } else if (data.action === 'make_admin') {
-            if (socket.role !== 'Yönetici') return;
-            activeUsers[targetId].role = 'Admin';
-            activeUsers[targetId].color = '#e67e22';
-            const tSock = io.sockets.sockets.get(targetId);
-            if(tSock) tSock.role = 'Admin';
-            io.emit('user list', Object.values(activeUsers));
+    socket.on('change color', (newColor) => {
+        if (users[socket.id]) {
+            users[socket.id].color = newColor;
+            socket.color = newColor;
+            io.emit('user list', Object.values(users));
         }
     });
 
     socket.on('chat message', (data) => {
-        if (activeUsers[socket.id]) {
-            const u = activeUsers[socket.id];
-            io.emit('chat message', { user: u.nick, role: u.role, text: data.text, color: data.color || u.color, style: data.style });
-        }
+        // Gelen metni sunucuda emojilere çevirip geri gönderiyoruz
+        const cleanText = parseEmojis(data.text); 
+        io.emit('chat message', { 
+            user: socket.nick, 
+            text: cleanText, 
+            color: socket.color, 
+            style: data.style 
+        });
     });
 
     socket.on('disconnect', () => {
-        if (activeUsers[socket.id]) {
-            delete activeUsers[socket.id];
-            io.emit('user list', Object.values(activeUsers));
+        if (users[socket.id]) {
+            const nick = users[socket.id].nick;
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+            io.emit('chat message', { user: 'SİSTEM', text: `${nick} ayrıldı.`, system: true });
         }
     });
 });
 
-server.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Radyo Yayında!`));
