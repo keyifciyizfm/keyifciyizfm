@@ -57,14 +57,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    // DJ CANLI AÇMA
-  socket.on("canli", () => {
-    let user = users.find(u => u.id === socket.id);
-    if(user && user.rol === "dj"){
-      user.canli = true;
-      io.emit("kullanicilar", users);
-    }
-  });
+    socket.on('disconnect', () => {
+        if (users[socket.id]) {
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+        }
+    });
+});
 
   // ÇIKIŞ
   socket.on("disconnect", () => {
