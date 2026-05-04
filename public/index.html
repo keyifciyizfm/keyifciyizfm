@@ -1,14 +1,249 @@
-{
-  "name": "keyifciyiz-fm",
-  "version": "1.0.0",
-  "description": "Canlı Radyo ve Sohbet Portalı",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "path": "^0.12.7"
-  }
-}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sohbet - Keyifciyiz FM</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; width: 320px; }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; min-width: 35px; justify-content: center; }
+        .f-btn.active { background: #2ecc71; color: #000 !important; }
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        .user-item { padding: 6px 0; border-bottom: 1px solid #222; cursor: pointer; }
+        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #333; border: 2px solid #555; padding: 15px; flex-wrap: wrap; gap: 10px; width: 280px; border-radius: 8px; box-shadow: 0 -5px 25px #000; z-index: 50; }
+        .emoji-item { cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        .emoji-item img { width: 24px; height: 24px; pointer-events: none; }
+        form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
+        #custom-menu { display: none; position: absolute; background: #2a2a2a; border: 1px solid #f1c40f88; z-index: 2000; width: 160px; border-radius: 2px; }
+        .menu-item { padding: 10px 15px; cursor: pointer; color: #ddd; font-size: 12px; border-bottom: 1px solid #333; }
+        .menu-item:hover { background: #3d3d3d; color: #fff; }
+
+        /* YÜZEN MİKSER STİLLERİ */
+        #floating-mixer { 
+            display: none; position: fixed; bottom: 80px; right: 20px; 
+            width: 320px; background: #2c3e50; border: 3px solid #f1c40f; 
+            border-radius: 10px; padding: 15px; z-index: 9999; box-shadow: 0 0 20px #000;
+        }
+        .mixer-header { font-size: 12px; color: #f1c40f; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .mixer-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .mixer-deck { background: #1a1a1a; padding: 8px; border-radius: 5px; }
+        .mixer-deck h4 { font-size: 10px; margin-bottom: 5px; color: #2ecc71; }
+        .xfader-area { grid-column: span 2; padding: 10px 0; text-align: center; }
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: #f1c40f; }
+        #live-indicator { display: none; margin-left: 10px; color: #e74c3c; font-weight: bold; animation: blink 1s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div id="login-box">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;"></div>
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
+        <p id="error-msg" style="color:red; font-size:11px; margin-top:10px;"></p>
+    </div>
+</div>
+
+<div id="floating-mixer">
+    <div class="mixer-header">
+        <span>🎧 DJ STUDIO PRO</span>
+        <span id="stream-status" style="color:#95a5a6;">OFFLINE</span>
+    </div>
+    <div class="mixer-controls">
+        <div class="mixer-deck">
+            <h4>DECK A</h4>
+            <input type="file" id="fileA" accept="audio/*" style="width: 100%; font-size: 9px; color: #777;">
+            <audio id="audioA" loop></audio>
+        </div>
+        <div class="mixer-deck">
+            <h4>DECK B</h4>
+            <input type="file" id="fileB" accept="audio/*" style="width: 100%; font-size: 9px; color: #777;">
+            <audio id="audioB" loop></audio>
+        </div>
+        <div class="xfader-area">
+            <span style="font-size: 9px;">CROSSFADER (A - B)</span>
+            <input type="range" id="xfader" min="0" max="1" step="0.01" value="0.5">
+        </div>
+    </div>
+    <div style="display: flex; gap: 5px; margin-top: 10px;">
+        <button id="start-btn" class="f-btn" style="flex: 2; background: #e74c3c;" onclick="toggleBroadcast()">🔴 YAYINI BAŞLAT</button>
+        <button id="mic-btn" class="f-btn" style="flex: 1;" onclick="toggleMic()">🎤 MİK</button>
+    </div>
+</div>
+
+<div id="chat-container">
+    <div id="top-gradient"></div>
+    <div id="action-bar">
+        <button class="f-btn" onclick="toggleEmojiPanel(event)">Emojiler</button>
+        <span id="live-indicator">● CANLI YAYIN</span>
+        <div style="flex: 1;"></div>
+        <button class="f-btn" onclick="location.reload()">Çıkış</button>
+    </div>
+
+    <div id="main-area">
+        <div id="messages"></div>
+        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
+    </div>
+    <form id="form" onsubmit="sendMessage(event)">
+        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+        <button type="submit" class="f-btn">GÖNDER</button>
+    </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var myNick = "", myRole = "", isBroadcasting = false, isMicOpen = false;
+    
+    // SES DEĞİŞKENLERİ
+    let audioCtx, dest, sourceA, sourceB, micSource, gainA, gainB, processor;
+    let listenerCtx, nextStartTime = 0;
+
+    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
+    
+    function joinChat() { 
+        const n = document.getElementById('nick-input').value, p = document.getElementById('pass-input').value; 
+        if(n) socket.emit('join', { nick: n, password: p }); 
+    }
+
+    socket.on('login success', d => { 
+        myNick = d.nick; myRole = d.role; 
+        document.getElementById('login-overlay').style.display = 'none'; 
+        if(myNick === "Keyifciyiz_Fm") {
+            document.getElementById('floating-mixer').style.display = 'block';
+            initMixerEngine();
+        }
+    });
+
+    // MİKSER MOTORU (DJ TARAFINDA SESİ YAKALAR)
+    function initMixerEngine() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        dest = audioCtx.createMediaStreamDestination();
+        
+        const a1 = document.getElementById('audioA');
+        const a2 = document.getElementById('audioB');
+        
+        sourceA = audioCtx.createMediaElementSource(a1);
+        sourceB = audioCtx.createMediaElementSource(a2);
+        
+        gainA = audioCtx.createGain();
+        gainB = audioCtx.createGain();
+        
+        sourceA.connect(gainA).connect(dest);
+        sourceA.connect(gainA).connect(audioCtx.destination);
+        sourceB.connect(gainB).connect(dest);
+        sourceB.connect(gainB).connect(audioCtx.destination);
+
+        // Dosya yükleme
+        document.getElementById('fileA').onchange = e => { a1.src = URL.createObjectURL(e.target.files[0]); a1.play(); };
+        document.getElementById('fileB').onchange = e => { a2.src = URL.createObjectURL(e.target.files[0]); a2.play(); };
+
+        document.getElementById('xfader').oninput = e => {
+            gainA.gain.value = 1 - e.target.value;
+            gainB.gain.value = e.target.value;
+        };
+
+        // Ses Paketleme İşlemcisi (4096 buffer size)
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        dest.connect(processor);
+        processor.connect(audioCtx.destination);
+
+        processor.onaudioprocess = (e) => {
+            if (isBroadcasting) {
+                const audioData = e.inputBuffer.getChannelData(0);
+                socket.emit('audio-stream', new Float32Array(audioData));
+            }
+        };
+    }
+
+    function toggleBroadcast() {
+        isBroadcasting = !isBroadcasting;
+        const btn = document.getElementById('start-btn');
+        const status = document.getElementById('stream-status');
+        if(isBroadcasting) {
+            audioCtx.resume();
+            btn.innerText = "⏹ DURDUR"; btn.style.background = "#222";
+            status.innerText = "LIVE"; status.style.color = "#e74c3c";
+            socket.emit('broadcast-status', true);
+        } else {
+            btn.innerText = "🔴 YAYINI BAŞLAT"; btn.style.background = "#e74c3c";
+            status.innerText = "OFFLINE"; status.style.color = "#95a5a6";
+            socket.emit('broadcast-status', false);
+        }
+    }
+
+    async function toggleMic() {
+        if(!isMicOpen) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micSource = audioCtx.createMediaStreamSource(stream);
+            micSource.connect(dest);
+            document.getElementById('mic-btn').classList.add('active');
+            isMicOpen = true;
+        } else {
+            micSource.disconnect();
+            document.getElementById('mic-btn').classList.remove('active');
+            isMicOpen = false;
+        }
+    }
+
+    // DİNLEYİCİ TARAFINDA SESİ OYNATMA
+    socket.on('audio-data', (data) => {
+        if (myNick === "Keyifciyiz_Fm") return; // DJ kendi yayınını buradan dinlemesin (eko yapar)
+        if (!listenerCtx) listenerCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const floatData = new Float32Array(data);
+        const buffer = listenerCtx.createBuffer(1, floatData.length, listenerCtx.sampleRate);
+        buffer.getChannelData(0).set(floatData);
+        
+        const source = listenerCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(listenerCtx.destination);
+        
+        const now = listenerCtx.currentTime;
+        if (nextStartTime < now) nextStartTime = now;
+        source.start(nextStartTime);
+        nextStartTime += buffer.duration;
+    });
+
+    socket.on('broadcast-status', (status) => {
+        document.getElementById('live-indicator').style.display = status ? 'inline' : 'none';
+        if(status) {
+            // Dinleyici için context'i aktif et (browser engeli için)
+            if(listenerCtx) listenerCtx.resume();
+        }
+    });
+
+    // CHAT FONKSİYONLARI (MEVCUT KODUN)
+    socket.on('chat message', d => {
+        const div = document.createElement('div'); div.style.marginBottom = "8px";
+        div.innerHTML = `<b style="color:${d.color}">${d.user}:</b> <span>${d.text}</span>`;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+
+    socket.on('user list', list => {
+        const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
+        list.forEach(u => {
+            const i = document.createElement('div'); i.className = 'user-item'; i.style.color = u.color;
+            i.innerText = u.nick + (u.nick === "Keyifciyiz_Fm" ? " (Dj)" : "");
+            uDiv.appendChild(i);
+        });
+    });
+
+    function sendMessage(e) { 
+        e.preventDefault(); const i = document.getElementById('input'); 
+        if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; } 
+    }
+</script>
+</body>
+</html>
