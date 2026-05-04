@@ -31,7 +31,6 @@ function parseEmojis(text) {
 
 io.on('connection', (socket) => {
     const userIP = socket.handshake.address;
-
     socket.on('join', (data) => {
         if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
         if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
@@ -41,13 +40,6 @@ io.on('connection', (socket) => {
         users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         io.emit('user list', Object.values(users));
-    });
-
-    // --- SES YAYINI İÇİN GEREKLİ EKLEME ---
-    socket.on('voice-data', (data) => {
-        if (socket.role === 'Yönetici') {
-            socket.broadcast.emit('audio-stream', data);
-        }
     });
 
     socket.on('admin command', (data) => {
