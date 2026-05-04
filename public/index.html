@@ -1,196 +1,59 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Keyifciyiz FM - Pro Studio</title>
-    <style>
-        :root { --main-bg: #0f0f0f; --panel-bg: #1e1e1e; --accent: #f1c40f; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--main-bg); font-family: 'Segoe UI', Tahoma, sans-serif; color: #e0e0e0; height: 100vh; overflow: hidden; }
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-        /* Yüzen Mikser */
-        #mixer-panel { 
-            position: fixed; top: 20px; right: 20px; width: 350px; 
-            background: var(--panel-bg); border: 2px solid #333; 
-            border-radius: 12px; padding: 15px; display: none; z-index: 100;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .deck { background: #111; padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); }
-        .deck h4 { font-size: 11px; color: var(--accent); margin-bottom: 5px; }
-        input[type="range"] { width: 100%; accent-color: var(--accent); }
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    maxHttpBufferSize: 1e8 // Büyük ses dosyaları için limiti artırdık (100MB)
+});
 
-        /* Chat Arayüzü */
-        #app-container { display: flex; height: 100vh; padding: 20px; gap: 20px; }
-        #chat-main { flex: 3; display: flex; flex-direction: column; background: var(--panel-bg); border-radius: 12px; border: 1px solid #333; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; font-size: 14px; line-height: 1.6; }
-        #user-sidebar { flex: 1; background: #151515; border-radius: 12px; padding: 15px; border: 1px solid #333; }
+app.use(express.static(path.join(__dirname, 'public')));
 
-        .f-btn { background: #333; border: none; color: #fff; padding: 10px 15px; border-radius: 6px; cursor: pointer; transition: 0.3s; }
-        .f-btn:hover { background: #444; }
-        .btn-live { background: #e74c3c; font-weight: bold; }
-        .btn-live.active { background: #27ae60; box-shadow: 0 0 10px #27ae60; }
+let connectedUsers = {};
+let currentStream = null;
 
-        #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        #login-box { background: var(--panel-bg); padding: 40px; border-radius: 15px; text-align: center; border: 1px solid #444; }
-    </style>
-</head>
-<body>
-
-<div id="login-overlay">
-    <div id="login-box">
-        <h2 style="color:var(--accent); margin-bottom:20px;">KEYİFCİYİZ FM PRO</h2>
-        <input type="text" id="nick-input" placeholder="Nick..." style="width:100%; padding:12px; margin-bottom:10px; border-radius:5px; border:none; background:#111; color:white;">
-        <div id="pass-div" style="display:none;"><input type="password" id="pass-input" placeholder="Yönetici Şifresi..." style="width:100%; padding:12px; margin-bottom:10px; border-radius:5px; border:none; background:#111; color:white;"></div>
-        <button class="f-btn" style="width:100%; background:var(--accent); color:black; font-weight:bold;" onclick="connect()">SİSTEME GİRİŞ YAP</button>
-    </div>
-</div>
-
-<div id="mixer-panel">
-    <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
-        <span style="font-weight:bold; color:var(--accent);">DJ STUDIO</span>
-        <button id="live-toggle" class="f-btn btn-live" onclick="toggleBroadcast()">YAYIN KAPALI</button>
-    </div>
-    <div class="deck">
-        <h4>DECK A</h4>
-        <input type="file" id="fileA" accept="audio/*">
-        <audio id="audioA" loop></audio>
-    </div>
-    <div class="deck">
-        <h4>DECK B</h4>
-        <input type="file" id="fileB" accept="audio/*">
-        <audio id="audioB" loop></audio>
-    </div>
-    <div style="text-align:center;">
-        <label style="font-size:10px;">CROSSFADER (A - B)</label>
-        <input type="range" id="xfader" min="0" max="1" step="0.05" value="0.5">
-    </div>
-</div>
-
-<div id="app-container">
-    <div id="chat-main">
-        <div id="messages"></div>
-        <form style="padding:15px; display:flex; gap:10px; border-top:1px solid #333;" onsubmit="sendChat(event)">
-            <input id="chat-input" placeholder="Mesajınızı yazın..." style="flex:1; padding:12px; background:#111; border:none; border-radius:6px; color:white;">
-            <button class="f-btn">GÖNDER</button>
-        </form>
-    </div>
-    <div id="user-sidebar">
-        <h4 style="color:var(--accent); margin-bottom:15px;">Dinleyiciler</h4>
-        <div id="user-list"></div>
-    </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
-    let audioCtx, dest, processor, listenerCtx, nextStartTime = 0;
-    let isBroadcasting = false;
-
-    // Login logic
-    document.getElementById('nick-input').oninput = e => {
-        document.getElementById('pass-div').style.display = (e.target.value === "Keyifciyiz_Fm") ? "block" : "none";
-    };
-
-    function connect() {
-        const nick = document.getElementById('nick-input').value;
-        const pass = document.getElementById('pass-input').value;
-        if(nick) socket.emit('join', { nick: nick, password: pass });
-    }
-
-    socket.on('login success', d => {
-        document.getElementById('login-overlay').style.display = 'none';
-        if(d.nick === "Keyifciyiz_Fm") {
-            document.getElementById('mixer-panel').style.display = 'block';
-            setupMixer();
+io.on('connection', (socket) => {
+    socket.on('join', (data) => {
+        let role = (data.password === "admin123") ? "SÜPER ADMİN" : "Üye";
+        connectedUsers[socket.id] = { id: socket.id, username: data.username, role: role };
+        socket.emit('loginApproved', connectedUsers[socket.id]);
+        io.emit('updateUserList', Object.values(connectedUsers));
+        
+        // Yeni giren biri varsa ve yayın açıksa yayını ona da gönder
+        if (currentStream) {
+            socket.emit('playAudio', currentStream);
         }
     });
 
-    // Mikser Motoru
-    function setupMixer() {
-        audioCtx = new AudioContext();
-        dest = audioCtx.createMediaStreamDestination();
-        
-        const setupDeck = (id) => {
-            const audio = document.getElementById('audio'+id);
-            const source = audioCtx.createMediaElementSource(audio);
-            const gain = audioCtx.createGain();
-            source.connect(gain).connect(dest);
-            source.connect(gain).connect(audioCtx.destination);
-            return gain;
-        };
-
-        const gainA = setupDeck('A');
-        const gainB = setupDeck('B');
-
-        document.getElementById('fileA').onchange = e => { audioA.src = URL.createObjectURL(e.target.files[0]); audioA.play(); };
-        document.getElementById('fileB').onchange = e => { audioB.src = URL.createObjectURL(e.target.files[0]); audioB.play(); };
-        
-        document.getElementById('xfader').oninput = e => {
-            gainA.gain.value = 1 - e.target.value;
-            gainB.gain.value = e.target.value;
-        };
-
-        // Ses Paketleyici
-        processor = audioCtx.createScriptProcessor(4096, 1, 1);
-        dest.connect(processor);
-        processor.connect(audioCtx.destination);
-        processor.onaudioprocess = (e) => {
-            if(isBroadcasting) {
-                const chunk = e.inputBuffer.getChannelData(0);
-                socket.emit('audio-stream', new Float32Array(chunk));
-            }
-        };
-    }
-
-    function toggleBroadcast() {
-        isBroadcasting = !isBroadcasting;
-        const btn = document.getElementById('live-toggle');
-        btn.innerText = isBroadcasting ? "🔴 YAYINDA" : "YAYIN KAPALI";
-        btn.classList.toggle('active', isBroadcasting);
-        socket.emit('broadcast-status', isBroadcasting);
-    }
-
-    // Dinleyici Motoru
-    socket.on('audio-data', (data) => {
-        if(socket.nick === "Keyifciyiz_Fm") return;
-        if(!listenerCtx) listenerCtx = new AudioContext();
-        
-        const floatData = new Float32Array(data);
-        const buffer = listenerCtx.createBuffer(1, floatData.length, listenerCtx.sampleRate);
-        buffer.getChannelData(0).set(floatData);
-        
-        const source = listenerCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(listenerCtx.destination);
-        
-        const now = listenerCtx.currentTime;
-        if(nextStartTime < now) nextStartTime = now;
-        source.start(nextStartTime);
-        nextStartTime += buffer.duration;
+    // MÜZİK YAYININI DAĞITMA
+    socket.on('broadcastAudio', (data) => {
+        const user = connectedUsers[socket.id];
+        if (user && (user.role === "DJ" || user.role === "SÜPER ADMİN")) {
+            currentStream = data; // Yayını kaydet
+            io.emit('playAudio', data); // Herkese gönder
+        }
     });
 
-    // Chat
-    function sendChat(e) {
-        e.preventDefault();
-        const input = document.getElementById('chat-input');
-        if(input.value) { socket.emit('chat message', { text: input.value }); input.value = ''; }
-    }
-
-    socket.on('chat message', d => {
-        const div = document.createElement('div');
-        div.innerHTML = `<b style="color:${d.color}">${d.user}:</b> ${d.text}`;
-        document.getElementById('messages').appendChild(div);
-        messages.scrollTop = messages.scrollHeight;
+    socket.on('stopBroadcast', () => {
+        const user = connectedUsers[socket.id];
+        if (user && (user.role === "DJ" || user.role === "SÜPER ADMİN")) {
+            currentStream = null;
+            io.emit('stopAudio');
+        }
     });
 
-    socket.on('user list', list => {
-        const div = document.getElementById('user-list');
-        div.innerHTML = list.map(u => `<div style="color:${u.color}; margin-bottom:5px;">● ${u.nick}</div>`).join('');
+    socket.on('sendMessage', (message) => {
+        const user = connectedUsers[socket.id];
+        if (user) io.emit('message', { user: user.username, role: user.role, text: message });
     });
 
-    // Ses için tıklama zorunluluğu
-    window.onclick = () => { if(listenerCtx) listenerCtx.resume(); };
-</script>
-</body>
-</html>
+    socket.on('disconnect', () => {
+        delete connectedUsers[socket.id];
+        io.emit('updateUserList', Object.values(connectedUsers));
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Radyo 3000 portunda hazır!`));
