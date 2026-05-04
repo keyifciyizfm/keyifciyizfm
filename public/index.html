@@ -1,51 +1,218 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>Web DJ Mixer</title>
+    <meta charset="UTF-8">
+    <title>Sohbet - Keyifciyiz FM</title>
     <style>
-        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; }
-        .mixer { display: flex; justify-content: space-around; margin-top: 50px; }
-        .deck { border: 2px solid #444; padding: 20px; border-radius: 10px; }
-        input[type="range"] { width: 300px; margin-top: 20px; }
+        /* MEVCUT STİLLERİN */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; width: 320px; }
+        #chat-container { width: 950px; height: 650px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; min-width: 35px; justify-content: center; }
+        .f-btn.active { background: #2ecc71; color: #000; }
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        .user-item { padding: 6px 0; border-bottom: 1px solid #222; cursor: pointer; }
+        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #333; border: 2px solid #555; padding: 15px; flex-wrap: wrap; gap: 10px; width: 280px; border-radius: 8px; box-shadow: 0 -5px 25px #000; z-index: 50; }
+        .emoji-item { cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+        .emoji-item img { width: 24px; height: 24px; pointer-events: none; }
+        form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
+        #custom-menu { display: none; position: absolute; background: #2a2a2a; border: 1px solid #f1c40f88; z-index: 2000; width: 160px; border-radius: 2px; }
+        .menu-item { padding: 10px 15px; cursor: pointer; color: #ddd; font-size: 12px; border-bottom: 1px solid #333; }
+        .menu-item:hover { background: #3d3d3d; color: #fff; }
+
+        /* YENİ DJ MİKSER STİLLERİ */
+        #dj-panel { display: none; background: #222; border-bottom: 2px solid #f1c40f; padding: 10px; color: #fff; }
+        .mixer-grid { display: flex; justify-content: space-between; align-items: center; }
+        .deck { background: #333; padding: 10px; border-radius: 5px; border: 1px solid #444; width: 30%; }
+        .controls { text-align: center; width: 35%; }
+        .deck h4 { font-size: 10px; color: #f1c40f; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .status-light { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: grey; margin-right: 5px; }
+        .status-active { background: #e74c3c; box-shadow: 0 0 5px #e74c3c; }
     </style>
 </head>
 <body>
-    <h1>DJ Mikser Paneli</h1>
-    <div class="mixer">
-        <div class="deck">
-            <h3>Deck A</h3>
-            <input type="file" id="fileA" accept="audio/*"><br><br>
-            <audio id="audioA" controls></audio>
-        </div>
-        <div class="deck">
-            <h3>Deck B</h3>
-            <input type="file" id="fileB" accept="audio/*"><br><br>
-            <audio id="audioB" controls></audio>
+
+<div id="login-overlay">
+    <div id="login-box">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;"></div>
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
+        <p id="error-msg" style="color:red; font-size:11px; margin-top:10px;"></p>
+    </div>
+</div>
+
+<div id="custom-menu">
+    <div class="menu-item" onclick="muteAction()">Sustur/Aç</div>
+    <div class="menu-item" onclick="kickAction()" style="color:#ff4757;">Odadan At</div>
+</div>
+
+<div id="chat-container">
+    <div id="top-gradient"></div>
+    
+    <div id="dj-panel">
+        <div class="mixer-grid">
+            <div class="deck">
+                <h4>DECK A</h4>
+                <input type="file" id="fileA" accept="audio/*" style="font-size:10px; width:100%;">
+                <audio id="audioA" loop></audio>
+            </div>
+            
+            <div class="controls">
+                <div style="margin-bottom:10px;">
+                    <span id="light" class="status-light"></span>
+                    <button class="f-btn" id="streamBtn" style="display:inline-block; background:red;" onclick="toggleBroadcast()">🔴 YAYINI BAŞLAT</button>
+                    <button class="f-btn" id="micBtn" style="display:inline-block; margin-left:5px;" onclick="toggleMic()">🎤 MİK: KAPALI</button>
+                </div>
+                <label style="font-size:10px;">CROSSFADER (A - B)</label>
+                <input type="range" id="xfader" min="0" max="1" step="0.01" value="0.5">
+            </div>
+
+            <div class="deck">
+                <h4>DECK B</h4>
+                <input type="file" id="fileB" accept="audio/*" style="font-size:10px; width:100%;">
+                <audio id="audioB" loop></audio>
+            </div>
         </div>
     </div>
-    <br>
-    <label>Crossfader (Geçiş)</label><br>
-    <input type="range" id="crossfader" min="0" max="1" step="0.01" value="0.5">
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const audioA = document.getElementById('audioA');
-        const audioB = document.getElementById('audioB');
-        const crossfader = document.getElementById('crossfader');
+    <div id="action-bar">
+        <button class="f-btn" onclick="toggleEmojiPanel(event)">Emojiler</button>
+        <div style="margin-left: 20px; border-left: 1px solid #555; padding-left: 15px; display: flex; align-items: center; gap: 5px;">
+            <button class="f-btn" onclick="changeFontSize(2)">A+</button>
+            <button class="f-btn" onclick="changeFontSize(-2)" style="margin-right: 15px;">A-</button>
+            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
+            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
+        </div>
+        <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="margin-left:20px; width:35px; height:22px; cursor:pointer;">
+        
+        <div id="listener-player" style="margin-left: 20px; display:none; align-items: center;">
+            <span style="color:#e74c3c; font-size:10px; margin-right:5px; font-weight:bold;">CANLI YAYIN:</span>
+            <audio id="radioPlayer" controls style="height:25px;"></audio>
+        </div>
 
-        // Dosya yükleme mantığı
-        document.getElementById('fileA').onchange = e => audioA.src = URL.createObjectURL(e.target.files[0]);
-        document.getElementById('fileB').onchange = e => audioB.src = URL.createObjectURL(e.target.files[0]);
+        <div style="flex: 1;"></div>
+        <button class="f-btn" onclick="location.reload()">Çıkış</button>
+    </div>
 
-        // Mikser geçişi
-        crossfader.oninput = () => {
-            const val = crossfader.value;
-            audioA.volume = 1 - val;
-            audioB.volume = val;
-            // Bu bilgiyi dinleyicilere gönder
-            socket.emit('mixer-move', { type: 'volume', a: 1-val, b: val });
+    <div id="main-area">
+        <div id="messages"></div>
+        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
+    </div>
+
+    <div id="emoji-panel"></div>
+
+    <form id="form" onsubmit="sendMessage(event)">
+        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+        <button type="submit" class="f-btn">GÖNDER</button>
+    </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var myNick = "", myRole = "", isBroadcasting = false, isMicOpen = false;
+    
+    // --- SES MOTORU DEĞİŞKENLERİ ---
+    let audioCtx, dest, sourceA, sourceB, micSource, xfaderNodeA, xfaderNodeB;
+
+    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
+    
+    function joinChat() { 
+        const n = document.getElementById('nick-input').value, p = document.getElementById('pass-input').value; 
+        if(n) socket.emit('join', { nick: n, password: p }); 
+    }
+
+    socket.on('login success', d => { 
+        myNick = d.nick; 
+        myRole = d.role; 
+        document.getElementById('login-overlay').style.display = 'none'; 
+        
+        // EĞER DJ GİRDİYSE PANELİ AÇ
+        if(myNick === "Keyifciyiz_Fm") {
+            document.getElementById('dj-panel').style.display = 'block';
+            initMixer(); // Mikser motorunu hazırla
+        }
+    });
+
+    // --- MİKSER MOTORU KURULUMU ---
+    function initMixer() {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        dest = audioCtx.createMediaStreamDestination();
+
+        const a1 = document.getElementById('audioA');
+        const a2 = document.getElementById('audioB');
+
+        sourceA = audioCtx.createMediaElementSource(a1);
+        sourceB = audioCtx.createMediaElementSource(a2);
+
+        xfaderNodeA = audioCtx.createGain();
+        xfaderNodeB = audioCtx.createGain();
+
+        sourceA.connect(xfaderNodeA).connect(dest);
+        sourceA.connect(xfaderNodeA).connect(audioCtx.destination); // DJ duysun diye
+        sourceB.connect(xfaderNodeB).connect(dest);
+        sourceB.connect(xfaderNodeB).connect(audioCtx.destination); // DJ duysun diye
+
+        // Dosya Yükleme
+        document.getElementById('fileA').onchange = e => { a1.src = URL.createObjectURL(e.target.files[0]); a1.play(); };
+        document.getElementById('fileB').onchange = e => { a2.src = URL.createObjectURL(e.target.files[0]); a2.play(); };
+
+        // Crossfader Mantığı
+        document.getElementById('xfader').oninput = e => {
+            let val = parseFloat(e.target.value);
+            xfaderNodeA.gain.value = 1 - val;
+            xfaderNodeB.gain.value = val;
         };
-    </script>
+    }
+
+    function toggleBroadcast() {
+        isBroadcasting = !isBroadcasting;
+        const btn = document.getElementById('streamBtn');
+        const light = document.getElementById('light');
+        
+        if(isBroadcasting) {
+            btn.innerText = "⏹ YAYINI DURDUR";
+            btn.style.background = "#333";
+            light.classList.add('status-active');
+            // Burada stream'i sokete gönderme mantığı eklenecek (WebRTC için server.js lazım)
+            alert("Yayın Hazırlanıyor... (Mikser aktif, ses çıkışı yönlendirildi)");
+        } else {
+            btn.innerText = "🔴 YAYINI BAŞLAT";
+            btn.style.background = "red";
+            light.classList.remove('status-active');
+        }
+    }
+
+    async function toggleMic() {
+        if(!isMicOpen) {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            micSource = audioCtx.createMediaStreamSource(stream);
+            micSource.connect(dest);
+            micSource.connect(audioCtx.destination);
+            document.getElementById('micBtn').innerText = "🎤 MİK: AÇIK";
+            document.getElementById('micBtn').style.background = "#2ecc71";
+            isMicOpen = true;
+        } else {
+            micSource.disconnect();
+            document.getElementById('micBtn').innerText = "🎤 MİK: KAPALI";
+            document.getElementById('micBtn').style.background = "#333";
+            isMicOpen = false;
+        }
+    }
+
+    // --- DİĞER CHAT FONKSİYONLARI (ESKİ KODLARIN) ---
+    // (Emoji, Mesaj Gönderme, Renk değiştirme kodlarını buraya olduğu gibi bırakabilirsin)
+    // ... (Chat mesajı ve User List socket kodları aynen kalacak)
+</script>
 </body>
 </html>
