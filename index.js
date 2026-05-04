@@ -15,6 +15,7 @@ let bannedIPs = [];
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
+// Emoji dönüştürücü
 const emojiMap = {
     ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e",
     ":heart:": "2764", ":fire:": "1f525", ":rose:": "1f339",
@@ -35,10 +36,10 @@ io.on('connection', (socket) => {
     const userIP = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
 
     socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı şifre!');
+        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi (BAN)!');
+        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı DJ şifresi!');
 
-        socket.nick = data.nick || "Misafir";
+        socket.nick = data.nick || "Misafir_" + Math.floor(Math.random() * 1000);
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
 
@@ -66,11 +67,11 @@ io.on('connection', (socket) => {
         if (!targetId) return;
 
         if (data.action === 'kick') {
-            io.to(targetId).emit('force logout', 'Odadan atıldınız!');
+            io.to(targetId).emit('force logout', 'DJ tarafından odadan atıldınız!');
             io.sockets.sockets.get(targetId)?.disconnect();
         } else if (data.action === 'ban') {
             bannedIPs.push(users[targetId].ip);
-            io.to(targetId).emit('force logout', 'Banlandınız!');
+            io.to(targetId).emit('force logout', 'Sistemden banlandınız!');
             io.sockets.sockets.get(targetId)?.disconnect();
         }
     });
@@ -83,6 +84,5 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000, () => {
-    console.log('Sunucu 3000 portunda aktif.');
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Sunucu http://localhost:${PORT} üzerinde çalışıyor.`));
