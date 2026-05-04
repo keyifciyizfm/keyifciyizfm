@@ -120,9 +120,9 @@
 
     socket.on('audio-data', (data) => {
         if(myRole === 'Yönetici') return;
-        document.getElementById('live-indicator').style.display = 'inline';
         if(!listenerCtx) listenerCtx = new AudioContext();
-        
+        document.getElementById('live-indicator').style.display = 'block';
+
         const buffer = listenerCtx.createBuffer(1, data.length, listenerCtx.sampleRate);
         buffer.getChannelData(0).set(new Float32Array(data));
         const src = listenerCtx.createBufferSource();
