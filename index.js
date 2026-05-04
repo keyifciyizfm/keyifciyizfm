@@ -57,12 +57,21 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('disconnect', () => {
-        if (users[socket.id]) {
-            delete users[socket.id];
-            io.emit('user list', Object.values(users));
-        }
-    });
+    // DJ CANLI AÇMA
+  socket.on("canli", () => {
+    let user = users.find(u => u.id === socket.id);
+    if(user && user.rol === "dj"){
+      user.canli = true;
+      io.emit("kullanicilar", users);
+    }
+  });
+
+  // ÇIKIŞ
+  socket.on("disconnect", () => {
+    users = users.filter(u => u.id !== socket.id);
+    io.emit("kullanicilar", users);
+  });
+
 });
 
-server.listen(3000, () => console.log("Radyo hazır:http://localhost:3000"));
+http.listen(process.env.PORT || 3000);
