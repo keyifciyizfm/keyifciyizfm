@@ -65,5 +65,4 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda hazır.`));
+server.listen(3000, () => console.log("Radyo hazır:http://localhost:3000"));
