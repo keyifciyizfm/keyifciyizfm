@@ -1,174 +1,88 @@
-const express = require("express");
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+const server = http.createServer(app);
+const io = new Server(server);
 
-let users = [];
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get("/", (req, res) => {
-  res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Radyo Chat</title>
+let users = {};
+let bannedIPs = [];
 
-<style>
-body {
-  background:#0f172a;
-  color:white;
-  font-family:Arial;
+const masterNick = "Keyifciyiz_Fm";
+const masterPass = "123456";
+
+const emojiMap = {
+    ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e",
+    ":heart:": "2764", ":fire:": "1f525", ":rose:": "1f339",
+    ":thumbsup:": "1f44d", ":microphone:": "1f399", ":wink:": "1f609",
+    ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
+};
+
+function parseEmojis(text) {
+    let newText = text;
+    for (const [code, id] of Object.entries(emojiMap)) {
+        const url = `https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/${id}.svg`;
+        newText = newText.split(code).join(`<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
+    }
+    return newText;
 }
 
-#chat {
-  height:300px;
-  overflow:auto;
-  border:1px solid #444;
-  padding:10px;
-  margin-bottom:10px;
-}
+io.on('connection', (socket) => {
+    const userIP = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
 
-input {
-  padding:6px;
-  margin:5px;
-}
+    socket.on('join', (data) => {
+        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
+        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı şifre!');
 
-button {
-  padding:6px 12px;
-  background:#22c55e;
-  border:none;
-  color:white;
-  cursor:pointer;
-}
+        socket.nick = data.nick || "Misafir";
+        socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
+        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
 
-#users {
-  background:#1e293b;
-  padding:10px;
-  margin-top:10px;
-}
-</style>
+        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
 
-</head>
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        io.emit('user list', Object.values(users));
+    });
 
-<body>
+    socket.on('chat message', (data) => {
+        if (users[socket.id]) {
+            const u = users[socket.id];
+            io.emit('chat message', {
+                user: u.nick,
+                text: parseEmojis(data.text),
+                color: data.color || u.color,
+                style: data.style
+            });
+        }
+    });
 
-<h2>🎧 Radyo Chat</h2>
+    socket.on('admin command', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        const targetId = Object.keys(users).find(id => users[id].nick === data.targetNick);
+        if (!targetId) return;
 
-<input id="isim" placeholder="Adın">
-<button onclick="gir()">Giriş</button>
+        if (data.action === 'kick') {
+            io.to(targetId).emit('force logout', 'Odadan atıldınız!');
+            io.sockets.sockets.get(targetId)?.disconnect();
+        } else if (data.action === 'ban') {
+            bannedIPs.push(users[targetId].ip);
+            io.to(targetId).emit('force logout', 'Banlandınız!');
+            io.sockets.sockets.get(targetId)?.disconnect();
+        }
+    });
 
-<div id="chat"></div>
-
-<input id="mesaj" placeholder="Mesaj">
-<button onclick="gonder()">Gönder</button>
-
-<h3>👥 Online</h3>
-<ul id="users"></ul>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-
-const socket = io();
-let isim = "";
-
-function gir(){
-  isim = document.getElementById("isim").value;
-  socket.emit("kullanici", isim);
-}
-
-function gonder(){
-  let mesaj = document.getElementById("mesaj").value;
-  socket.emit("mesaj", isim + ": " + mesaj);
-}
-
-// MESAJ GÖSTER
-socket.on("mesaj", (data)=>{
-  document.getElementById("chat").innerHTML += 
-  "<div style='background:#1e293b;padding:8px;margin:5px;border-radius:10px;'>"+data+"</div>";
+    socket.on('disconnect', () => {
+        if (users[socket.id]) {
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+        }
+    });
 });
 
-// KULLANICI LİSTESİ
-socket.on("kullanicilar", (users)=>{
-  let html = "";
-
-  users.forEach(u=>{
-
-    let renk = "white";
-    let etiket = "";
-
-    if(u.rol == "admin"){
-      renk = "red";
-      etiket = " 👑";
-    }
-
-    if(u.rol == "dj"){
-      renk = "orange";
-      etiket = " 🎧";
-    }
-
-    if(u.canli){
-      etiket += " 🔴CANLI";
-    }
-
-    html += "<li style='color:"+renk+"'>"+u.isim+etiket+"</li>";
-  });
-
-  document.getElementById("users").innerHTML = html;
+server.listen(process.env.PORT || 3000, () => {
+    console.log('Sunucu 3000 portunda aktif.');
 });
-
-</script>
-
-</body>
-</html>
-  `);
-});
-
-// KULLANICI GİRİŞ
-io.on("connection", (socket) => {
-
-  socket.on("kullanici", (isim) => {
-
-    let rol = "user";
-
-    if(isim.toLowerCase() == "halil"){
-      rol = "admin";
-    }
-
-    if(isim.toLowerCase() == "gamze"){
-      rol = "dj";
-    }
-
-    let user = {
-      id: socket.id,
-      isim: isim,
-      rol: rol,
-      canli: false
-    };
-
-    users.push(user);
-    io.emit("kullanicilar", users);
-  });
-
-  // MESAJ
-  socket.on("mesaj", (data) => {
-    io.emit("mesaj", data);
-  });
-
-  // DJ CANLI AÇMA
-  socket.on("canli", () => {
-    let user = users.find(u => u.id === socket.id);
-    if(user && user.rol === "dj"){
-      user.canli = true;
-      io.emit("kullanicilar", users);
-    }
-  });
-
-  // ÇIKIŞ
-  socket.on("disconnect", () => {
-    users = users.filter(u => u.id !== socket.id);
-    io.emit("kullanicilar", users);
-  });
-
-});
-
-http.listen(process.env.PORT || 3000);
