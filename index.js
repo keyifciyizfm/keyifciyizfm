@@ -1,76 +1,73 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+// --- SES MOTORU (AUDIO ENGINE) ---
+let audioCtx, dest, musicNode, musicGain, micNode, micGain, recorder;
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+/**
+ * 1. Mikseri Başlat: Tüm kanalları hazırlar.
+ */
+async function initMixerEngine() {
+    // AudioContext'i oluştur (Tarayıcı kısıtlaması nedeniyle bir tıklama ile çalışmalı)
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Ana Çıkış Kanalı (Buraya ne bağlanırsa yayına o gider)
+    dest = audioCtx.createMediaStreamDestination();
 
-app.use(express.static(path.join(__dirname, 'public')));
+    // Müzik Kanalı ve Ses Ayarı
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.5; // Başlangıç sesi %50
+    musicGain.connect(dest);
+    musicGain.connect(audioCtx.destination); // DJ'in kendisinin duyması için
 
-let users = {}; 
-let bannedIPs = [];
-
-const masterNick = "Keyifciyiz_Fm";
-const masterPass = "123456";
-
-function parseEmojis(text) {
-    const emojiMap = {
-        ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
-        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
-        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
-    };
-    let newText = text;
-    for (const [code, id] of Object.entries(emojiMap)) {
-        const url = `https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/${id}.svg`;
-        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
-    }
-    return newText;
+    console.log("Mikser Motoru Hazır.");
 }
 
-io.on('connection', (socket) => {
-    const userIP = socket.handshake.address;
-    socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
-        socket.nick = data.nick || "Misafir";
-        socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
-        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
-        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, ip: userIP };
-        socket.emit('login success', { role: socket.role, nick: socket.nick });
-        io.emit('user list', Object.values(users));
-    });
+/**
+ * 2. Dosyadan Müzik Yükle
+ */
+function loadMusicToMixer(fileElement, audioTag) {
+    const file = fileElement.files[0];
+    if (!file) return;
 
-    socket.on('admin command', (data) => {
-        if (socket.role !== 'Yönetici') return;
-        const targetId = Object.keys(users).find(id => users[id].nick === data.targetNick);
-        if (!targetId) return;
-        if (data.action === 'kick') {
-            io.to(targetId).emit('force logout', 'Odadan atıldınız!');
-            io.sockets.sockets.get(targetId)?.disconnect();
-        } else if (data.action === 'ban') {
-            bannedIPs.push(users[targetId].ip);
-            io.to(targetId).emit('force logout', 'Banlandınız!');
-            io.sockets.sockets.get(targetId)?.disconnect();
+    audioTag.src = URL.createObjectURL(file);
+    
+    // Eğer müzik node'u henüz bağlanmadıysa bağla
+    if (!musicNode) {
+        musicNode = audioCtx.createMediaElementSource(audioTag);
+        musicNode.connect(musicGain);
+    }
+    audioTag.play();
+}
+
+/**
+ * 3. Mikrofonu Miksere Ekle (Anons Sistemi)
+ */
+async function enableMic() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micNode = audioCtx.createMediaStreamSource(stream);
+        micGain = audioCtx.createGain();
+        
+        micNode.connect(micGain);
+        micGain.connect(dest); // Mikrofonu ana çıkışa bağla
+        console.log("Mikrofon Miksere Bağlandı.");
+    } catch (err) {
+        console.error("Mikrofon açılırken hata:", err);
+    }
+}
+
+/**
+ * 4. Yayını Başlat (Sunucuya Gönderim)
+ */
+function startBroadcasting(socket) {
+    // Recorder, ana çıkış kanalını (dest) dinler
+    recorder = new MediaRecorder(dest.stream);
+    
+    recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+            // Sunucuya 'voice-data' adıyla gönderir
+            socket.emit('voice-data', event.data);
         }
-    });
+    };
 
-    socket.on('chat message', (data) => {
-        if (users[socket.id]) {
-            const u = users[socket.id];
-            io.emit('chat message', { 
-                user: u.nick, 
-                text: parseEmojis(data.text), 
-                color: data.color || u.color, 
-                style: data.style 
-            });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        if (users[socket.id]) { delete users[socket.id]; io.emit('user list', Object.values(users)); }
-    });
-});
-
-server.listen(process.env.PORT || 3000);
+    recorder.start(200); // 200ms'lik paketler halinde gönder
+    console.log("Yayın sunucuya iletiliyor...");
+}
