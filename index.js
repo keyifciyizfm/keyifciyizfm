@@ -6,64 +6,54 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8, // 100MB'a kadar ses verisi desteği
-    cors: { origin: "*" }
+    maxHttpBufferSize: 1e8 // Büyük ses dosyaları için limiti artırdık (100MB)
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let users = {};
-let isLive = false;
-const masterNick = "Keyifciyiz_Fm";
-const masterPass = "123456";
+let connectedUsers = {};
+let currentStream = null;
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        if (data.nick === masterNick && data.password !== masterPass) {
-            return socket.emit('auth-error', 'Hatalı Yönetici Şifresi!');
-        }
+        let role = (data.password === "admin123") ? "SÜPER ADMİN" : "Üye";
+        connectedUsers[socket.id] = { id: socket.id, username: data.username, role: role };
+        socket.emit('loginApproved', connectedUsers[socket.id]);
+        io.emit('updateUserList', Object.values(connectedUsers));
         
-        socket.nick = data.nick || "Misafir_" + Math.floor(Math.random() * 999);
-        socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
-        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
-
-        users[socket.id] = { nick: socket.nick, role: socket.role, color: socket.color };
-        
-        socket.emit('login success', { role: socket.role, nick: socket.nick });
-        io.emit('user list', Object.values(users));
-        if (isLive) socket.emit('broadcast-status', true);
-    });
-
-    // Ses Akışı: DJ'den gelen veriyi diğerlerine "broadcast" eder
-    socket.on('audio-stream', (data) => {
-        if (socket.role === 'Yönetici') {
-            socket.broadcast.emit('audio-data', data);
+        // Yeni giren biri varsa ve yayın açıksa yayını ona da gönder
+        if (currentStream) {
+            socket.emit('playAudio', currentStream);
         }
     });
 
-    socket.on('broadcast-status', (status) => {
-        if (socket.role === 'Yönetici') {
-            isLive = status;
-            io.emit('broadcast-status', status);
+    // MÜZİK YAYININI DAĞITMA
+    socket.on('broadcastAudio', (data) => {
+        const user = connectedUsers[socket.id];
+        if (user && (user.role === "DJ" || user.role === "SÜPER ADMİN")) {
+            currentStream = data; // Yayını kaydet
+            io.emit('playAudio', data); // Herkese gönder
         }
     });
 
-    socket.on('chat message', (data) => {
-        if (users[socket.id]) {
-            io.emit('chat message', { 
-                user: users[socket.id].nick, 
-                text: data.text, 
-                color: data.color || users[socket.id].color 
-            });
+    socket.on('stopBroadcast', () => {
+        const user = connectedUsers[socket.id];
+        if (user && (user.role === "DJ" || user.role === "SÜPER ADMİN")) {
+            currentStream = null;
+            io.emit('stopAudio');
         }
+    });
+
+    socket.on('sendMessage', (message) => {
+        const user = connectedUsers[socket.id];
+        if (user) io.emit('message', { user: user.username, role: user.role, text: message });
     });
 
     socket.on('disconnect', () => {
-        delete users[socket.id];
-        io.emit('user list', Object.values(users));
+        delete connectedUsers[socket.id];
+        io.emit('updateUserList', Object.values(connectedUsers));
     });
 });
 
-server.listen(process.env.PORT || 3000, () => {
-    console.log('Sunucu 3000 portunda hazır.');
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Radyo 3000 portunda hazır!`));
