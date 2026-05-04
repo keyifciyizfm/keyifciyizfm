@@ -1,183 +1,63 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Pro Producer</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        * { box-sizing: border-box; }
-        body { 
-            background: #000; color: #ccc; font-family: 'Tahoma', sans-serif; 
-            margin: 0; padding: 0; height: 100vh; display: flex; flex-direction: column; 
-        }
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-        /* GİRİŞ EKRANI */
-        #login-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; align-items: center; justify-content: center; }
-        .login-card { background: #1a1a1a; padding: 40px; border: 2px solid #ff9900; text-align: center; }
-        .login-card input { display: block; width: 100%; padding: 10px; margin-bottom: 10px; background: #000; color: #fff; border: 1px solid #444; }
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { maxHttpBufferSize: 1e8 });
 
-        /* ÜST: RİTİM VE ARAÇLAR */
-        .top-bar { background: #1a1a1a; padding: 10px; border-bottom: 2px solid #333; }
-        .rhythm { height: 20px; background: linear-gradient(90deg, #0f0, #ff0, #f00); margin-bottom: 10px; border-radius: 2px; }
-        .tools { display: flex; gap: 8px; align-items: center; }
-        .btn { background: #333; color: #fff; border: 1px solid #555; padding: 5px 10px; cursor: pointer; font-weight: bold; }
-        .btn:hover { background: #ff9900; color: #000; }
+app.use(express.static(path.join(__dirname, 'public')));
 
-        /* MESAJ YAZ KUTUSU */
-        .input-bar { background: #222; padding: 10px; display: flex; gap: 10px; border-bottom: 2px solid #333; }
-        #m-input { flex: 1; background: #000; border: 1px solid #444; color: #fff; padding: 10px; outline: none; }
+let connectedUsers = {};
 
-        /* ANA GÖVDE: MESAJLAR VE LİSTE */
-        .main-content { display: flex; flex: 1; overflow: hidden; }
-        #messages { flex: 3; background: #050505; padding: 15px; overflow-y: auto; border-right: 2px solid #333; }
-        .side-panel { width: 250px; background: #111; display: flex; flex-direction: column; }
-        #user-list { flex: 1; padding: 10px; overflow-y: auto; }
-        
-        /* MIXER BUTONU VE PANELİ */
-        #admin-mixer-btn { display: none; background: #ff9900; color: #000; border: none; padding: 15px; font-weight: bold; cursor: pointer; }
-        #mixer-modal { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #222; border: 2px solid #ff9900; padding: 20px; display: none; flex-direction: column; gap: 10px; z-index: 2000;
-        }
-        .playlist-box { background: #000; height: 100px; overflow-y: auto; border: 1px solid #444; margin: 10px 0; }
-        .playlist-item { padding: 5px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #222; }
-        .playlist-item:hover { background: #333; color: #ff9900; }
-    </style>
-</head>
-<body>
-
-<div id="login-overlay">
-    <div class="login-card">
-        <h2 style="color:#ff9900">KEYİFCİYİZ FM</h2>
-        <input type="text" id="u-nick" placeholder="Rumuz...">
-        <input type="password" id="u-pass" placeholder="Şifre (Admin: 123)">
-        <button class="btn" style="width:100%; background:#ff9900; color:#000;" onclick="login()">BAĞLAN</button>
-    </div>
-</div>
-
-<div id="mixer-modal">
-    <h3 style="margin:0; color:#ff9900;">STUDIO MIXER</h3>
-    <input type="file" id="music-files" multiple onchange="updatePlaylist()">
-    <div id="playlist-container" class="playlist-box"></div>
-    <button class="btn" style="background:#27ae60; border:none;" onclick="startStream()">YAYINI BAŞLAT</button>
-    <button id="mic-btn" class="btn" onclick="toggleMic()">MIC KAPALI</button>
-    <button class="btn" onclick="toggleMixer()">KAPAT</button>
-</div>
-
-<div class="top-bar">
-    <div class="rhythm"></div>
-    <div class="tools">
-        <button class="btn">A+</button><button class="btn">A-</button>
-        <button class="btn">B</button><button class="btn">I</button>
-        <input type="color" id="c-picker" value="#ffffff">
-        <button class="btn" style="margin-left:auto;">Nick Değiştir</button>
-    </div>
-</div>
-
-<div class="input-bar">
-    <input type="text" id="m-input" placeholder="Mesaj yazın..." onkeypress="if(event.key==='Enter') sendMsg()">
-    <button class="btn" style="background:#ff9900; color:#000;" onclick="sendMsg()">GÖNDER</button>
-</div>
-
-<div class="main-content">
-    <div id="messages"></div>
-    <div class="side-panel">
-        <div style="padding:10px; font-size:12px; font-weight:bold; color:#ff9900; text-align:center;">DİNLEYİCİLER</div>
-        <div id="user-list"></div>
-        <button id="admin-mixer-btn" onclick="toggleMixer()">Mixeraç</button>
-    </div>
-</div>
-
-<audio id="audio-out"></audio>
-
-<script>
-    const socket = io();
-    let myRole = "USER";
-    let isLive = false;
-
-    function login() {
-        const n = document.getElementById('u-nick').value;
-        const p = document.getElementById('u-pass').value;
-        if(n) socket.emit('join', { username: n, password: p });
-    }
-
-    socket.on('authStatus', (data) => {
-        myRole = data.role;
-        document.getElementById('login-overlay').style.display = 'none';
-        if(myRole === "ADMIN") document.getElementById('admin-mixer-btn').style.display = 'block';
-    });
-
-    function sendMsg() {
-        const i = document.getElementById('m-input');
-        if(!i.value) return;
-        socket.emit('sendMessage', i.value);
-        i.value = '';
-    }
-
-    socket.on('message', (d) => {
-        const m = document.getElementById('messages');
-        m.innerHTML += `<div style="margin-bottom:5px;"><b>${d.user}:</b> ${d.text}</div>`;
-        m.scrollTop = m.scrollHeight;
-    });
-
-    function toggleMixer() {
-        const modal = document.getElementById('mixer-modal');
-        modal.style.display = (modal.style.display === 'flex') ? 'none' : 'flex';
-    }
-
-    function updatePlaylist() {
-        const files = document.getElementById('music-files').files;
-        const container = document.getElementById('playlist-container');
-        container.innerHTML = '';
-        Array.from(files).forEach((file, idx) => {
-            const div = document.createElement('div');
-            div.className = "playlist-item";
-            div.innerHTML = `🎵 ${file.name}`;
-            div.onclick = () => playFile(file);
-            container.appendChild(div);
-        });
-    }
-
-    function playFile(file) {
-        if(!isLive) return alert("Önce Yayını Başlat!");
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            socket.emit('audioStream', { data: e.target.result });
-            document.getElementById('audio-out').src = e.target.result;
-            document.getElementById('audio-out').play();
+io.on('connection', (socket) => {
+    socket.on('join', (data) => {
+        const isAdmin = (data.password === "123");
+        connectedUsers[socket.id] = { 
+            username: data.username, 
+            role: isAdmin ? "ADMIN" : "USER",
+            title: isAdmin ? "[DJ]" : "[Üye]",
+            muted: false,
+            id: socket.id 
         };
-        reader.readAsDataURL(file);
-    }
-
-    function startStream() { isLive = true; alert("Yayın Aktif!"); }
-
-    socket.on('audioPlay', (p) => { 
-        const a = document.getElementById('audio-out'); 
-        a.src = p.data; a.play(); 
+        socket.emit('authStatus', { role: connectedUsers[socket.id].role });
+        io.emit('updateUserList', Object.values(connectedUsers));
     });
 
-    socket.on('updateUserList', (users) => {
-        const list = document.getElementById('user-list');
-        list.innerHTML = '';
-        users.forEach(u => {
-            const d = document.createElement('div');
-            d.style.padding = "5px";
-            d.innerHTML = `<span style="color:#ff9900">${u.title}</span> ${u.username}`;
-            if(myRole === "ADMIN" && u.role !== "ADMIN") {
-                d.onclick = () => {
-                    const act = prompt("1: Ünvan, 2: Sustur, 3: Kick");
-                    if(act === "1") {
-                        const t = prompt("Ünvan:");
-                        socket.emit('assignTitle', { userId: u.id, title: t });
-                    } else if(act === "2") socket.emit('muteUser', { userId: u.id });
-                    else if(act === "3") socket.emit('kickUser', { userId: u.id });
-                };
-            }
-            list.appendChild(d);
-        });
+    socket.on('assignTitle', (data) => {
+        if (connectedUsers[socket.id]?.role === "ADMIN" && connectedUsers[data.userId]) {
+            connectedUsers[data.userId].title = data.title;
+            io.emit('updateUserList', Object.values(connectedUsers));
+        }
     });
 
-    socket.on('kicked', () => { alert("Atıldınız!"); window.location.reload(); });
-</script>
-</body>
-</html>
+    socket.on('muteUser', (data) => {
+        if (connectedUsers[socket.id]?.role === "ADMIN" && connectedUsers[data.userId]) {
+            connectedUsers[data.userId].muted = !connectedUsers[data.userId].muted;
+            io.emit('updateUserList', Object.values(connectedUsers));
+        }
+    });
+
+    socket.on('kickUser', (data) => {
+        if (connectedUsers[socket.id]?.role === "ADMIN" && connectedUsers[data.userId]) {
+            io.to(data.userId).emit('kicked');
+        }
+    });
+
+    socket.on('audioStream', (data) => { socket.broadcast.emit('audioPlay', data); });
+
+    socket.on('sendMessage', (msg) => {
+        const user = connectedUsers[socket.id];
+        if(user && !user.muted) {
+            io.emit('message', { user: `${user.title} ${user.username}`, role: user.role, text: msg });
+        }
+    });
+
+    socket.on('disconnect', () => {
+        delete connectedUsers[socket.id];
+        io.emit('updateUserList', Object.values(connectedUsers));
+    });
+});
+
+server.listen(3000, () => console.log("Radyo hazır: http://localhost:3000"));
