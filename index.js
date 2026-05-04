@@ -6,54 +6,32 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8 // Büyük ses dosyaları için limiti artırdık (100MB)
+    maxHttpBufferSize: 5e7 // 50MB limit
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let connectedUsers = {};
-let currentStream = null;
+let currentDJ = null;
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         let role = (data.password === "admin123") ? "SÜPER ADMİN" : "Üye";
-        connectedUsers[socket.id] = { id: socket.id, username: data.username, role: role };
-        socket.emit('loginApproved', connectedUsers[socket.id]);
-        io.emit('updateUserList', Object.values(connectedUsers));
-        
-        // Yeni giren biri varsa ve yayın açıksa yayını ona da gönder
-        if (currentStream) {
-            socket.emit('playAudio', currentStream);
-        }
+        socket.emit('loginApproved', { username: data.username, role: role });
     });
 
-    // MÜZİK YAYININI DAĞITMA
-    socket.on('broadcastAudio', (data) => {
-        const user = connectedUsers[socket.id];
-        if (user && (user.role === "DJ" || user.role === "SÜPER ADMİN")) {
-            currentStream = data; // Yayını kaydet
-            io.emit('playAudio', data); // Herkese gönder
-        }
+    // MÜZİK VE MİKROFON YAYINI
+    socket.on('streamData', (data) => {
+        // DJ veriyi gönderdiğinde herkese (kendisi hariç) yayınlar
+        socket.broadcast.emit('playStream', data);
     });
 
-    socket.on('stopBroadcast', () => {
-        const user = connectedUsers[socket.id];
-        if (user && (user.role === "DJ" || user.role === "SÜPER ADMİN")) {
-            currentStream = null;
-            io.emit('stopAudio');
-        }
+    socket.on('stopStream', () => {
+        io.emit('killStream');
     });
 
-    socket.on('sendMessage', (message) => {
-        const user = connectedUsers[socket.id];
-        if (user) io.emit('message', { user: user.username, role: user.role, text: message });
-    });
-
-    socket.on('disconnect', () => {
-        delete connectedUsers[socket.id];
-        io.emit('updateUserList', Object.values(connectedUsers));
+    socket.on('sendMessage', (m) => {
+        io.emit('message', m);
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Radyo 3000 portunda hazır!`));
+server.listen(3000, () => console.log("Profesyonel Radyo 3000'de!"));
