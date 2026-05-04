@@ -130,18 +130,50 @@
         }
     }
 
-    // Dinleyici Ses Alımı
-    let nextTime = 0;
-    socket.on('audio-stream', async blobData => {
-        if (myRole === 'Yönetici') return;
-        if (!window.listCtx) window.listCtx = new AudioContext();
-        const buffer = await window.listCtx.decodeAudioData(await new Blob([blobData]).arrayBuffer());
-        const source = window.listCtx.createBufferSource();
-        source.buffer = buffer; source.connect(window.listCtx.destination);
-        const now = window.listCtx.currentTime;
-        if (nextTime < now) nextTime = now;
-        source.start(nextTime); nextTime += buffer.duration;
-    });
+    // Dinleyici Ses Alımı ve Oynatma Sistemi (Geliştirilmiş)
+let nextTime = 0;
+window.listCtx = null; // Başlangıçta boş bırakıyoruz
+
+socket.on('audio-stream', async (blobData) => {
+    if (myRole === 'Yönetici') return; // DJ kendi sesini tekrar duymaz
+
+    try {
+        // 1. Dinleyici Context'i kullanıcı etkileşimiyle (Giriş butonu gibi) oluşturulmalı
+        if (!window.listCtx) {
+            window.listCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // 2. Tarayıcı sesi askıya almışsa (Autoplay engeli), devam ettir
+        if (window.listCtx.state === 'suspended') {
+            await window.listCtx.resume();
+        }
+
+        // 3. Gelen Blob verisini ArrayBuffer'a çevir
+        const arrayBuffer = await new Blob([blobData]).arrayBuffer();
+        
+        // 4. Sesi çöz ve oynat
+        window.listCtx.decodeAudioData(arrayBuffer, (buffer) => {
+            const source = window.listCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(window.listCtx.destination);
+
+            const now = window.listCtx.currentTime;
+            
+            // Paketlerin üst üste binmemesi için zamanlama kontrolü
+            if (nextTime < now) {
+                nextTime = now + 0.05; // 50ms küçük bir tampon bırakıyoruz
+            }
+            
+            source.start(nextTime);
+            nextTime += buffer.duration;
+        }, (err) => {
+            console.error("Ses çözme hatası:", err);
+        });
+
+    } catch (e) {
+        console.error("Ses akış hatası:", e);
+    }
+});
 
     // Sohbet Fonksiyonları
     function sendMsg(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: document.getElementById('colorPicker').value }); i.value = ''; } }
