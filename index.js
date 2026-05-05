@@ -10,11 +10,10 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
-let userStatus = {}; // { 'Nick': DurumKodu } 0:Normal, 1:Susturuldu, 2:Engellendi
+let userStatus = {}; 
 const masterNick = "Keyifciyiz_Fm";
-const masterPass = "123456";
+const masterPass = "123456"; // Şifreniz burada
 
-// Emoji Çözücü - Güvenilir CDN Linkleri ile
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
@@ -31,7 +30,10 @@ function parseEmojis(text) {
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
+        // Şifre Kontrolü
+        if (data.nick === masterNick && data.password !== masterPass) {
+            return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
+        }
         
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
@@ -80,14 +82,10 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             const u = users[socket.id];
             if (userStatus[u.nick] === 2) return;
-
             const msgData = { 
-                user: u.nick, 
-                text: parseEmojis(data.text), 
-                color: data.color || u.color, 
-                style: data.style 
+                user: u.nick, text: parseEmojis(data.text), 
+                color: data.color || u.color, style: data.style 
             };
-
             if (userStatus[u.nick] === 1) {
                 msgData.isMuted = true;
                 socket.emit('chat message', msgData);
