@@ -6,39 +6,33 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; width: 320px; }
-        
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; min-width: 35px; justify-content: center; }
         .f-btn.active { background: #2ecc71; color: #000; }
-        
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { padding: 6px 0; border-bottom: 1px solid #222; cursor: pointer; }
-
-        /* EMOJI PANELI DÜZENLEME */
+        
+        /* EMOJI PANELİ GÜNCEL STİL */
         #emoji-panel { 
             display: none; 
             position: absolute; 
-            bottom: 70px; 
-            left: 10px; 
+            bottom: 65px; 
+            left: 12px; 
             background: #333; 
             border: 2px solid #555; 
             padding: 10px; 
-            width: 250px; 
-            height: 150px;
             flex-wrap: wrap; 
-            gap: 5px; 
+            gap: 8px; 
+            width: 250px; 
             border-radius: 8px; 
             box-shadow: 0 -5px 25px #000; 
-            z-index: 500;
-            overflow-y: auto;
+            z-index: 50; 
         }
         .emoji-item { 
             cursor: pointer; 
@@ -47,15 +41,15 @@
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            background: #444;
-            border-radius: 4px;
+            font-size: 20px; 
+            background: #444; 
+            border-radius: 5px;
+            transition: 0.2s;
         }
-        .emoji-item:hover { background: #555; }
-        .emoji-item img { width: 24px; height: 24px; }
-
+        .emoji-item:hover { background: #555; transform: scale(1.1); }
+        
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
-        
         #custom-menu { display: none; position: absolute; background: #2a2a2a; border: 1px solid #f1c40f88; z-index: 2000; width: 160px; border-radius: 2px; }
         .menu-item { padding: 10px 15px; cursor: pointer; color: #ddd; font-size: 12px; border-bottom: 1px solid #333; }
         .menu-item:hover { background: #3d3d3d; color: #fff; }
@@ -74,8 +68,8 @@
 </div>
 
 <div id="custom-menu">
-    <div class="menu-item" onclick="muteAction()">Sustur/Aç</div>
-    <div class="menu-item" onclick="kickAction()" style="color:#ff4757;">Odadan At</div>
+    <div class="menu-item" onclick="muteAction()">🔇 Sustur/Aç</div>
+    <div class="menu-item" onclick="kickAction()" style="color:#ff4757;">🚪 Odadan At</div>
 </div>
 
 <div id="chat-container">
@@ -99,8 +93,7 @@
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
 
-    <div id="emoji-panel">
-        </div>
+    <div id="emoji-panel"></div>
 
     <form id="form" onsubmit="sendMessage(event)">
         <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
@@ -113,42 +106,23 @@
     var socket = io();
     var myNick = "", myRole = "", selectedTarget = "", currentFontSize = 13, selectedColor = "#2ecc71", styles = { bold: false, italic: false, underline: false };
 
-    // Emoji Listesi ve Panel Oluşturma
-    const emojis = [
-        {c: '😊', i: '1f60a'}, {c: '😂', i: '1f602'}, {c: '😎', i: '1f60e'}, {c: '❤️', i: '2764'},
-        {c: '🔥', i: '1f525'}, {c: '🌹', i: '1f339'}, {c: '👍', i: '1f44d'}, {c: '🎤', i: '1f399'},
-        {c: '😉', i: '1f609'}, {c: '⭐', i: '2b50'}, {c: '☕', i: '2615'}, {c: '🎵', i: '1f3b5'}
-    ];
-    
+    // Emoji Listesi (Karakter olarak eklendi, kırık resim sorunu olmaz)
+    const emojis = ['😊', '😂', '😎', '❤️', '🔥', '🌹', '👍', '🎤', '😉', '⭐', '☕', '🎵', '🎁', '⚡', '👏', '🥳'];
     const panel = document.getElementById('emoji-panel');
+    
     emojis.forEach(e => {
         let d = document.createElement('div'); 
         d.className = 'emoji-item';
-        // Görsel yerine direkt karakter kullanımı daha güvenlidir ancak senin SVG yapını korudum
-        d.innerHTML = `<img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/${e.i}.svg" alt="${e.c}">`;
+        d.innerText = e;
         d.onclick = (event) => { 
             event.stopPropagation();
-            document.getElementById('input').value += e.c; 
-            document.getElementById('input').focus();
-            panel.style.display = 'none'; // Tıklayınca kapansın
+            document.getElementById('input').value += e; 
+            document.getElementById('input').focus(); 
+            panel.style.display = 'none'; // Seçince kapansın
         };
         panel.appendChild(d);
     });
 
-    function toggleEmojiPanel(e) { 
-        e.stopPropagation(); 
-        const p = document.getElementById('emoji-panel');
-        // display flex yaparak görünür kılıyoruz
-        p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; 
-    }
-
-    // Dışarı tıklayınca her şeyi kapat
-    document.addEventListener('click', () => { 
-        document.getElementById('custom-menu').style.display = 'none'; 
-        document.getElementById('emoji-panel').style.display = 'none'; 
-    });
-
-    // --- Mevcut Fonksiyonların Devamı ---
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
     function joinChat() { const n = document.getElementById('nick-input').value, p = document.getElementById('pass-input').value; if(n) socket.emit('join', { nick: n, password: p }); }
     
@@ -172,6 +146,18 @@
     });
 
     function openAdminMenu(t, e) { if (myRole !== 'Yönetici' || t === myNick) return; selectedTarget = t; const m = document.getElementById('custom-menu'); m.style.display = 'block'; m.style.left = e.pageX + "px"; m.style.top = e.pageY + "px"; e.stopPropagation(); }
+    
+    document.addEventListener('click', () => { 
+        document.getElementById('custom-menu').style.display = 'none'; 
+        document.getElementById('emoji-panel').style.display = 'none'; 
+    });
+
+    function toggleEmojiPanel(e) { 
+        e.stopPropagation(); 
+        const p = document.getElementById('emoji-panel'); 
+        p.style.display = (p.style.display === 'flex' ? 'none' : 'flex'); 
+    }
+
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function changeColor(c) { selectedColor = c; document.getElementById('input').style.color = c; }
