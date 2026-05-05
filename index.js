@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let users = {}; 
 let userStatus = {}; 
 let currentBackground = ""; 
-let isAdminOnline = false; // YÖNETİCİ KONTROLÜ
+let isAdminOnline = false; // Odanın açık/kapalı olma anahtarı
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
@@ -34,7 +34,7 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
 
-        // KONTROL: Yönetici yoksa girişi engelle
+        // KURAL: Yönetici yoksa ve giren yönetici değilse odaya sokma
         if (!isAdminOnline && !isTargetAdmin) {
             return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
         }
@@ -43,6 +43,7 @@ io.on('connection', (socket) => {
             return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
         }
 
+        // Yönetici girince kilidi aç
         if (isTargetAdmin) isAdminOnline = true;
 
         socket.nick = data.nick || "Misafir";
@@ -65,14 +66,11 @@ io.on('connection', (socket) => {
         
         let statusMsg = "";
         if(data.state === 1) statusMsg = `🔇 [${data.target}] Susturuldunuz!`;
-        if(data.state === 2) statusMsg = `🚫 [${data.target}] Engellendiniz!`;
         if(data.state === 0) statusMsg = `✅ [${data.target}] Sohbete devam edebilirsiniz.`;
 
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target || users[id].role === 'Yönetici') {
-                io.to(id).emit('chat message', { 
-                    user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } 
-                });
+                io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
             }
             if (users[id].nick === data.target) {
                 users[id].status = data.state;
@@ -120,8 +118,14 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (users[socket.id]) {
-            if (users[socket.id].nick === masterNick) isAdminOnline = false;
-            delete users[socket.id];
+            if (users[socket.id].nick === masterNick) {
+                isAdminOnline = false;
+                // Yönetici çıkınca odadaki herkesi at
+                io.emit('force logout', 'Yayın sona erdi, oda kapatıldı!');
+                users = {}; 
+            } else {
+                delete users[socket.id];
+            }
             io.emit('user list', Object.values(users));
         }
     });
