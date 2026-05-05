@@ -43,7 +43,6 @@
             font-size: 20px; 
             background: #444; 
             border-radius: 5px;
-            transition: 0.2s;
         }
         .emoji-item:hover { background: #555; transform: scale(1.1); }
         
@@ -53,8 +52,8 @@
         .menu-item { padding: 10px 15px; cursor: pointer; color: #ddd; font-size: 12px; border-bottom: 1px solid #333; }
         .menu-item:hover { background: #3d3d3d; color: #fff; }
         
-        /* Sistem Mesajı Stili */
-        .system-msg { color: #f1c40f; font-style: italic; font-size: 12px; margin-bottom: 8px; border-left: 3px solid #f1c40f; padding-left: 10px; }
+        /* Sistem Mesajı Stili (Herkes için) */
+        .system-msg { color: #f1c40f; font-style: italic; font-size: 12px; margin: 5px 0; border-left: 3px solid #f1c40f; padding-left: 10px; background: rgba(241, 196, 15, 0.1); }
     </style>
 </head>
 <body>
@@ -107,8 +106,6 @@
 <script>
     var socket = io();
     var myNick = "", myRole = "", selectedTarget = "", currentFontSize = 13, selectedColor = "#2ecc71", styles = { bold: false, italic: false, underline: false };
-    
-    // SUSTURMA LİSTESİ
     var mutedUsers = [];
 
     const emojis = ['😊', '😂', '😎', '❤️', '🔥', '🌹', '👍', '🎤', '😉', '⭐', '☕', '🎵', '🎁', '⚡', '👏', '🥳'];
@@ -132,10 +129,18 @@
     
     socket.on('login success', d => { myNick = d.nick; myRole = d.role; document.getElementById('login-overlay').style.display = 'none'; });
     
-    socket.on('chat message', d => {
-        // EĞER KULLANICI SUSTURULMUŞSA MESAJINI GÖSTERME
-        if (mutedUsers.includes(d.user)) return;
+    // SUNUCUDAN GELEN SİSTEM MESAJLARINI YAKALA (Herkes görsün diye)
+    socket.on('system notification', data => {
+        const msgBox = document.getElementById('messages');
+        const systemDiv = document.createElement('div');
+        systemDiv.className = 'system-msg';
+        systemDiv.innerText = data.text;
+        msgBox.appendChild(systemDiv);
+        msgBox.scrollTop = msgBox.scrollHeight;
+    });
 
+    socket.on('chat message', d => {
+        if (mutedUsers.includes(d.user)) return;
         const div = document.createElement('div'); div.style.marginBottom = "8px"; const s = d.style || {};
         div.innerHTML = `<b style="color:${d.color}; cursor:pointer;" onclick="openAdminMenu('${d.user}', event)">${d.user}:</b> 
             <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">${d.text}</span>`;
@@ -173,24 +178,28 @@
         p.style.display = (p.style.display === 'flex' ? 'none' : 'flex'); 
     }
 
-    // SUSTUR / AÇ FONKSİYONU
+    // --- YENİLENMİŞ AKSİYONLAR ---
+
     function muteAction() {
-        const msgBox = document.getElementById('messages');
-        const systemDiv = document.createElement('div');
-        systemDiv.className = 'system-msg';
-
+        let actionText = "";
         if (mutedUsers.includes(selectedTarget)) {
-            // Susturmayı Kaldır
             mutedUsers = mutedUsers.filter(u => u !== selectedTarget);
-            systemDiv.innerText = `📢 Sistem: ${selectedTarget} kullanıcısının susturulması kaldırıldı.`;
+            actionText = `📢 Sistem: ${myNick}, ${selectedTarget} kullanıcısının susturulmasını kaldırdı.`;
         } else {
-            // Sustur
             mutedUsers.push(selectedTarget);
-            systemDiv.innerText = `🚫 Sistem: ${selectedTarget} kullanıcısı tarafınızca susturuldu.`;
+            actionText = `🚫 Sistem: ${myNick}, ${selectedTarget} kullanıcısını susturdu.`;
         }
+        
+        // Sunucuya "herkese göster" mesajı gönder
+        socket.emit('chat message', { text: actionText, color: '#f1c40f', isSystem: true });
+        document.getElementById('custom-menu').style.display = 'none';
+    }
 
-        msgBox.appendChild(systemDiv);
-        msgBox.scrollTop = msgBox.scrollHeight;
+    function kickAction() {
+        const actionText = `🚪 Sistem: ${myNick}, ${selectedTarget} kullanıcısını odadan attı!`;
+        // Sunucuya komutu ve sistem mesajını gönder
+        socket.emit('admin command', {action: 'kick', targetNick: selectedTarget});
+        socket.emit('chat message', { text: actionText, color: '#ff4757', isSystem: true });
         document.getElementById('custom-menu').style.display = 'none';
     }
 
@@ -198,7 +207,6 @@
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function changeColor(c) { selectedColor = c; document.getElementById('input').style.color = c; }
     function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
-    function kickAction() { socket.emit('admin command', {action: 'kick', targetNick: selectedTarget}); }
 </script>
 </body>
 </html>
