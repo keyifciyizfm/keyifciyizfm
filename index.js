@@ -11,11 +11,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
 let userStatus = {}; 
-let currentBackground = ""; // Arka plan hafızası
+let currentBackground = ""; // ARKA PLAN HAFIZASI: Yeni gelenler için burada tutuyoruz.
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// Emoji dönüştürücü fonksiyonu
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
@@ -46,44 +45,31 @@ io.on('connection', (socket) => {
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         socket.emit('status update', userStatus[socket.nick]);
         
-        // Yeni gelene arka planı gönder
-        if (currentBackground !== "") socket.emit('background changed', currentBackground);
-        
+        // YENİ GELENE MEVCUT ARKA PLANI GÖNDER
+        if (currentBackground !== "") {
+            socket.emit('background changed', currentBackground);
+        }
+
         io.emit('user list', Object.values(users));
+    });
+
+    socket.on('change background', (url) => { 
+        if (socket.role === 'Yönetici') {
+            currentBackground = url; // Hafızaya al
+            io.emit('background changed', url); // Herkese duyur
+        }
     });
 
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
-        
-        let statusMsg = "";
-        if(data.state === 1) statusMsg = "🔇 [" + data.target + "] Susturuldunuz!";
-        if(data.state === 2) statusMsg = "🚫 [" + data.target + "] Engellendiniz!";
-        if(data.state === 0) statusMsg = "✅ [" + data.target + "] Engeliniz Kaldırıldı!";
-
-        // Gizli Bildirim: Sadece yöneticiye ve hedefe gönder
         Object.keys(users).forEach(id => {
-            if (users[id].nick === data.target || users[id].role === 'Yönetici') {
-                io.to(id).emit('chat message', { 
-                    user: "BİLGİ", 
-                    text: statusMsg, 
-                    color: "#f1c40f", 
-                    style: { bold: true, italic: true } 
-                });
-            }
             if (users[id].nick === data.target) {
                 users[id].status = data.state;
                 io.to(id).emit('status update', data.state);
             }
         });
         io.emit('user list', Object.values(users));
-    });
-
-    socket.on('change background', (url) => { 
-        if (socket.role === 'Yönetici') {
-            currentBackground = url;
-            io.emit('background changed', url);
-        }
     });
 
     socket.on('update color', (newColor) => {
@@ -96,23 +82,12 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             const u = users[socket.id];
             if (userStatus[u.nick] === 2) return;
-            
-            const msgData = { 
-                user: u.nick, 
-                text: parseEmojis(data.text), 
-                color: data.color || u.color, 
-                style: data.style 
-            };
-
+            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
             if (userStatus[u.nick] === 1) {
                 msgData.isMuted = true;
-                socket.emit('chat message', msgData); // Kendine
-                Object.keys(users).forEach(id => { 
-                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', msgData); // Yöneticiye
-                });
-            } else {
-                io.emit('chat message', msgData); // Herkese
-            }
+                socket.emit('chat message', msgData);
+                Object.keys(users).forEach(id => { if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', msgData); });
+            } else { io.emit('chat message', msgData); }
         }
     });
 
