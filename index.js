@@ -1,228 +1,131 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Canlı Sohbet & Radyo</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
-        #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        #chat-container { width: 950px; height: 650px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
-        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        
-        /* RADYO PLAYER STİLLERİ */
-        #radio-bar { background: #222; padding: 10px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #444; }
-        #radio-led { width: 10px; height: 10px; background: #555; border-radius: 50%; transition: 0.3s; }
-        .led-active { background: #ff4757 !important; box-shadow: 0 0 10px #ff4757; }
-        
-        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
-        .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
-        .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
-        
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; }
-        #admin-display-name { font-weight: bold; font-size: 15px; }
-        .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
-        .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
-        .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
-        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
-        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
-        #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
-    </style>
-</head>
-<body>
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-<div id="login-overlay">
-    <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..."></div>
-        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px;">BAĞLAN</button>
-        <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:10px; display:none;"></p>
-    </div>
-</div>
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-<div id="chat-container">
-    <div id="top-gradient"></div>
+app.use(express.static(path.join(__dirname, 'public')));
 
-    <div id="radio-bar">
-        <div id="radio-led"></div>
-        <span style="font-size: 11px; font-weight: bold; color: #f1c40f; min-width: 80px;">CANLI YAYIN</span>
-        
-        <audio id="main-player" preload="none">
-            <source src="http://IP_ADRESIN:PORT_NUMARAN/stream" type="audio/mpeg">
-        </audio>
+let users = {}; 
+let userStatus = {}; 
+let currentBackground = ""; 
+let adminCount = 0; 
+let shutdownTimer = null; 
 
-        <button id="play-btn" class="f-btn" onclick="toggleRadio()" style="background: #27ae60; border: none; min-width: 100px;">▶ BAŞLAT</button>
-        
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 10px; color: #666;">VOL:</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.8" oninput="document.getElementById('main-player').volume = this.value" style="width: 50px; cursor: pointer;">
-        </div>
+const masterNick = "Keyifciyiz_Fm";
+const masterPass = "123456"; // Kendi şifrenle değiştirebilirsin
 
-        <marquee id="radio-info" style="font-size: 11px; color: #888;">Keyifciyiz FM Sohbet Odasına Hoşgeldiniz... Yayını dinlemek için BAŞLAT butonuna tıklayın!</marquee>
-    </div>
-
-    <div id="action-bar">
-        <div class="tool-group"><button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button></div>
-        <div class="tool-group"><button class="f-btn" onclick="changeFontSize(2)">A+</button><button class="f-btn" onclick="changeFontSize(-2)">A-</button></div>
-        <div class="tool-group">
-            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>B</b></button>
-            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
-        </div>
-        <div class="tool-group"><input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;"></div>
-        <div class="tool-group" id="admin-tools" style="display:none;">
-            <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
-            <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Resim</button>
-            <input type="file" id="bg-upload" style="display:none;" onchange="uploadBg(this)">
-        </div>
-        <div style="flex:1;"></div>
-        <button class="f-btn" onclick="location.reload()">Çıkış</button>
-    </div>
-
-    <div id="main-area">
-        <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
-        <div id="messages"></div>
-        <div id="user-list">
-            <div id="fixed-admin">
-                <div style="font-size:9px; color:#666; margin-bottom:4px; text-transform:uppercase;">Şu An Yayında</div>
-                <div id="admin-display-name">Keyifciyiz_Fm</div>
-            </div>
-            <b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:8px 0; border:#333 1px solid;">
-            <div id="users"></div>
-        </div>
-    </div>
-
-    <div id="emoji-panel"></div>
-
-    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
-        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
-        <button type="submit" class="f-btn">GÖNDER</button>
-    </form>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    var socket = io();
-    var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
-    var styles = { bold: false, italic: false, underline: false };
-
-    // RADYO SİSTEMİ
-    const radio = document.getElementById('main-player');
-    const playBtn = document.getElementById('play-btn');
-    const radioLed = document.getElementById('radio-led');
-    const radioInfo = document.getElementById('radio-info');
-    let isPlaying = false;
-
-    function toggleRadio() {
-        if (!isPlaying) {
-            // Caster.fm cache kırmak için URL'yi tazele
-            const baseSrc = radio.querySelector('source').src.split('?')[0];
-            radio.src = baseSrc + "?nocache=" + Math.random();
-            
-            radio.play().then(() => {
-                isPlaying = true;
-                playBtn.innerText = "⬛ DURDUR";
-                playBtn.style.background = "#e74c3c";
-                radioLed.classList.add('led-active');
-                radioInfo.innerText = "Yayın Başarıyla Bağlandı. Keyifli Dinlemeler!";
-            }).catch(e => {
-                alert("Yayın Başlatılamadı. Yayıncı Çevrimdışı Olabilir.");
-            });
-        } else {
-            radio.pause();
-            radio.src = "";
-            isPlaying = false;
-            playBtn.innerText = "▶ BAŞLAT";
-            playBtn.style.background = "#27ae60";
-            radioLed.classList.remove('led-active');
-            radioInfo.innerText = "Radyo Durduruldu.";
-        }
+function parseEmojis(text) {
+    const emojiMap = {
+        ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
+        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
+        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
+    };
+    let newText = text;
+    for (const [code, id] of Object.entries(emojiMap)) {
+        const url = `https://fonts.gstatic.com/s/e/notoemoji/latest/${id}/512.webp`;
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
     }
+    return newText;
+}
 
-    // SOHBET SİSTEMİ
-    const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
-    const panel = document.getElementById('emoji-panel');
-    emojis.forEach(e => {
-        let d = document.createElement('div');
-        d.innerHTML = `<img src="https://fonts.gstatic.com/s/e/notoemoji/latest/${e.id}/512.webp" style="width:30px;height:30px;cursor:pointer;">`;
-        d.onclick = (ev) => { ev.stopPropagation(); document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
-        panel.appendChild(d);
-    });
-
-    function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
-    document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
-
-    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    function joinChat() {
-        const n = document.getElementById('nick-input').value.trim();
-        const p = document.getElementById('pass-input').value.trim();
-        if(n) socket.emit('join', { nick: n, password: p });
-    }
-
-    socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
-    socket.on('login success', d => { 
-        myNick = d.nick; myRole = d.role; 
-        document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') {
-            document.getElementById('admin-tools').style.display = 'flex';
-            selectedColor = "#ff4757"; 
-            document.getElementById('colorPicker').value = "#ff4757";
-        }
-    });
-
-    socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
-
-    socket.on('chat message', d => {
-        if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
-        const div = document.createElement('div'); div.style.marginBottom = "8px";
-        let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
-        div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    });
-
-    socket.on('status update', s => {
-        const o = document.getElementById('ban-overlay');
-        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
-    });
-
-    socket.on('force logout', () => { document.getElementById('ban-overlay').style.display = 'flex'; document.getElementById('ban-text').innerText = "ODA KAPATILDI!"; setTimeout(() => location.reload(), 2000); });
-
-    socket.on('user list', data => {
-        const adminNameEl = document.getElementById('admin-display-name');
-        let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
-        if (adminUser) adminNameEl.style.color = adminUser.color;
+io.on('connection', (socket) => {
+    socket.on('join', (data) => {
+        const isTargetAdmin = (data.nick === masterNick);
         
-        const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
-        data.list.forEach(u => {
-            if(u.nick === "Keyifciyiz_Fm") return;
-            const item = document.createElement('div'); item.className = 'user-item';
-            const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
-            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
-            if (myRole === 'Yönetici') {
-                box.style.cursor = "pointer";
-                box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
+        if (adminCount === 0 && !isTargetAdmin) {
+            return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
+        }
+        
+        if (isTargetAdmin && data.password !== masterPass) {
+            return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
+        }
+        
+        if (isTargetAdmin) {
+            adminCount++;
+            if (shutdownTimer) {
+                clearTimeout(shutdownTimer);
+                shutdownTimer = null;
+                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yeni yayıncı bağlandı, yayın devralındı.", color: "#2ecc71" });
             }
-            const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
-            item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
-        });
+        }
+        
+        socket.nick = data.nick || "Misafir";
+        socket.role = isTargetAdmin ? 'Yönetici' : 'Dinleyici';
+        socket.color = isTargetAdmin ? (data.color || '#ff4757') : '#2ecc71';
+        
+        if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
+        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
+        
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        socket.emit('status update', userStatus[socket.nick]);
+        if (currentBackground !== "") socket.emit('background changed', currentBackground);
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
-    function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
-    function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
-    function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
-    function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
-    function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
-    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
-</script>
-</body>
-</html>
+    socket.on('update status', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        userStatus[data.target] = data.state;
+        
+        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
+        
+        Object.keys(users).forEach(id => {
+            if (users[id].nick === data.target) {
+                if(statusMsg !== "") {
+                    io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
+                }
+                users[id].status = data.state;
+                io.to(id).emit('status update', data.state);
+            }
+        });
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+    });
+
+    socket.on('chat message', (data) => {
+        if (users[socket.id]) {
+            const u = users[socket.id];
+            if (userStatus[u.nick] === 2) return;
+            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style, isMuted: (userStatus[u.nick] === 1) };
+            if (userStatus[u.nick] === 1) {
+                socket.emit('chat message', msgData);
+                Object.keys(users).forEach(id => { 
+                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                });
+            } else { io.emit('chat message', msgData); }
+        }
+    });
+
+    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
+    socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
+    
+    socket.on('update color', (newColor) => { 
+        if (users[socket.id]) { 
+            users[socket.id].color = newColor; 
+            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) }); 
+        } 
+    });
+    
+    socket.on('disconnect', () => {
+        if (users[socket.id]) {
+            if (users[socket.id].role === 'Yönetici') {
+                adminCount--;
+                if (adminCount <= 0) {
+                    adminCount = 0;
+                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı değişikliği yapılıyor, oda 60 saniye içinde devredilecek...", color: "#f1c40f" });
+                    shutdownTimer = setTimeout(() => {
+                        io.emit('force logout'); 
+                        users = {};
+                        adminCount = 0;
+                    }, 60000); 
+                }
+            }
+            delete users[socket.id];
+            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+        }
+    });
+});
+
+server.listen(process.env.PORT || 3000);
