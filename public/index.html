@@ -74,26 +74,18 @@
     player.onended = () => { if(isDJ()) play(currentIdx + 1); };
     function isDJ() { return document.getElementById('pro-mixer').style.display === 'block'; }
 
-    // CHAT
-    function send() {
-        const i = document.getElementById('mi');
-        if(i.value) { socket.emit('sendMessage', { user: document.getElementById('un').value, text: i.value }); i.value = ''; }
+                }
+            });
+        });
     }
 
-    socket.on('message', (m) => {
-        document.getElementById('messages').innerHTML += `
-            <div class="msg-box">
-                <span class="nick">${m.user}</span>
-                <div class="text">${m.text}</div>
-            </div>`;
-        document.getElementById('messages').scrollTop = 999999;
+    socket.on('audio-stream', async (data) => {
+        if (sourceBuffer && !sourceBuffer.updating) {
+            sourceBuffer.appendBuffer(data);
+        } else {
+            queue.push(data);
+        }
     });
-
-    function stopRadyo() { socket.emit('stopStream'); }
-    function clearAll() { musicList = []; document.getElementById('playlist').innerHTML = ''; stopRadyo(); }
-</script>
-</body>
-</html>
 
     // --- DJ MİKSER SİSTEMİ ---
     function initDJ(input) {
