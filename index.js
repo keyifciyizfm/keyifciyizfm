@@ -5,33 +5,28 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    maxHttpBufferSize: 5e7 // 50MB limit
+const io = new Server(server, { 
+    cors: { origin: "*" },
+    maxHttpBufferSize: 1e8 
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let currentDJ = null;
+const masterNick = "Keyifciyiz_Fm";
+const masterPass = "123456";
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        let role = (data.password === "admin123") ? "SÜPER ADMİN" : "Üye";
-        socket.emit('loginApproved', { username: data.username, role: role });
+        socket.nick = data.nick || "Dinleyici";
+        socket.role = (data.nick === masterNick && data.password === masterPass) ? 'DJ' : 'Dinleyici';
+        socket.emit('login_success', { role: socket.role });
     });
 
-    // MÜZİK VE MİKROFON YAYINI
-    socket.on('streamData', (data) => {
-        // DJ veriyi gönderdiğinde herkese (kendisi hariç) yayınlar
-        socket.broadcast.emit('playStream', data);
-    });
-
-    socket.on('stopStream', () => {
-        io.emit('killStream');
-    });
-
-    socket.on('sendMessage', (m) => {
-        io.emit('message', m);
+    socket.on('voice-data', (data) => {
+        if (socket.role === 'DJ') {
+            socket.broadcast.emit('audio-stream', data);
+        }
     });
 });
 
-server.listen(3000, () => console.log("Profesyonel Radyo 3000'de!"));
+server.listen(process.env.PORT || 3000, () => console.log("Radyo Aktif"));
