@@ -12,7 +12,7 @@
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center; min-width: 40px; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; }
         .f-btn.active { background: #2ecc71; color: #000; font-weight: bold; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; position: relative; background-size: cover; background-position: center; }
@@ -24,7 +24,6 @@
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border-radius: 2px; }
         .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 8px; width: 260px; z-index: 200; box-shadow: 0 -5px 25px #000; }
-        .emoji-item img { width: 24px; height: 24px; cursor: pointer; }
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; border-radius: 3px; }
     </style>
@@ -36,7 +35,7 @@
         <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
         <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         <div id="pass-area" style="display:none;">
-            <input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+            <input type="password" id="pass-input" placeholder="Yönetici Şifresi..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         </div>
         <button class="f-btn" style="margin: 0 auto; padding: 10px 30px; font-weight:bold;" onclick="joinChat()">BAĞLAN</button>
         <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:10px; display:none;"></p>
@@ -70,9 +69,7 @@
 
     <div id="main-area">
         <div id="ban-overlay"><h1>🚫</h1><h3>Engellendiniz!</h3></div>
-        <div id="messages">
-            <div class="bg-overlay" id="overlay"></div>
-            </div>
+        <div id="messages"><div class="bg-overlay" id="overlay"></div></div>
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
     <div id="emoji-panel"></div>
@@ -88,7 +85,6 @@
     var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
-    // Emoji Paneli
     const emojis = [
         {c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'},
         {c: ':fire:', i: '1f525'}, {c: ':rose:', i: '1f339'}, {c: ':thumbsup:', i: '1f44d'}, {c: ':microphone:', i: '1f399'},
@@ -97,7 +93,7 @@
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
         let d = document.createElement('div'); d.className = 'emoji-item';
-        d.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/jakejarvis/apple-emoji-svg@master/emoji/${e.i}.svg">`;
+        d.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/jakejarvis/apple-emoji-svg@master/emoji/${e.i}.svg" style="width:24px; cursor:pointer;">`;
         d.onclick = () => { document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
         panel.appendChild(d);
     });
@@ -109,6 +105,10 @@
         if(!n) return;
         socket.emit('join', { nick: n, password: p });
     }
+
+    socket.on('auth error', m => { 
+        const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; 
+    });
 
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
@@ -123,13 +123,11 @@
         document.getElementById('input').disabled = (s === 2);
     });
 
-    // TEMİZLEME DİNLEYİCİSİ (Kesin Çözüm)
+    // TEMİZLEME FONKSİYONU
     socket.on('chat cleared', () => {
-        const msgBox = document.getElementById('messages');
-        // Arka plan perdesini koruyarak sadece mesajları siler
-        const overlay = document.getElementById('overlay');
-        msgBox.innerHTML = '';
-        msgBox.appendChild(overlay);
+        const m = document.getElementById('messages');
+        const o = document.getElementById('overlay');
+        m.innerHTML = ''; m.appendChild(o);
     });
 
     socket.on('background changed', url => {
@@ -141,10 +139,10 @@
         if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.className = "msg-content";
         const s = d.style || {};
-        let displayNick = d.user;
-        if(displayNick.includes("(Susturuldu)")) displayNick = `<span style="color:#777;">${d.user}</span>`;
+        let nickHTML = `<b style="color:${d.color}">${d.user}:</b>`;
+        if(d.user.includes("(Susturuldu)")) nickHTML = `<b style="color:#777;">${d.user}:</b>`;
 
-        div.innerHTML = `<b style="color:${d.color}">${displayNick}:</b> <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">${d.text}</span>`;
+        div.innerHTML = `${nickHTML} <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
@@ -172,12 +170,12 @@
             reader.readAsDataURL(input.files[0]);
         }
     }
-    function clearChat() { if(confirm("Sohbeti temizle?")) socket.emit('clear chat'); }
+    function clearChat() { if(confirm("Tüm mesajlar silinsin mi?")) socket.emit('clear chat'); }
     function handleColorChange(c) { selectedColor = c; document.getElementById('input').style.color = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; }
-    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
+    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value && myStatus !== 2) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
     document.addEventListener('click', () => document.getElementById('emoji-panel').style.display = 'none');
 </script>
 </body>
