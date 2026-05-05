@@ -16,13 +16,33 @@
         #chat-container { width: 950px; height: 680px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         
-        /* MİNİMAL RADYO BAR */
-        #radio-bar { background: #222; padding: 8px; display: flex; align-items: center; border-bottom: 1px solid #444; height: 60px; }
+        /* RADYO BAR */
+        #radio-bar { background: #222; padding: 8px; display: flex; align-items: center; border-bottom: 1px solid #444; height: 65px; }
         #radio-led { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; box-shadow: 0 0 8px #2ecc71; margin-right: 8px; }
         
-        /* Player Maskeleme Kutusu */
-        #player-mask { width: 140px; height: 40px; overflow: hidden; position: relative; border-radius: 4px; background: #000; border: 1px solid #444; margin-left: 15px; }
-        #player-mask iframe { width: 400px; height: 200px; position: absolute; top: -78px; left: -10px; border: none; }
+        /* PLAYER MASKELEME (BEYAZLIK SORUNU GİDERİLDİ) */
+        #player-mask { 
+            width: 160px; 
+            height: 45px; 
+            overflow: hidden; 
+            position: relative; 
+            border-radius: 6px; 
+            background: #000; /* Beyaz boşluk yerine siyah arka plan */
+            border: 1px solid #555; 
+            margin-left: 15px; 
+        }
+        #player-mask iframe { 
+            width: 500px; 
+            height: 300px; 
+            position: absolute; 
+            /* Play butonunun konumuna göre bu değerleri milimetrik ayarladım */
+            top: -72px; 
+            left: -10px; 
+            border: none; 
+            /* Butonu biraz daha netleştirmek için ölçeklendirme */
+            transform: scale(0.9);
+            transform-origin: 0 0;
+        }
 
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
@@ -70,7 +90,7 @@
         </div>
 
         <marquee style="font-size: 11px; color: #888; flex: 1; margin-left: 20px; font-style: italic;">
-            Yazgülüm FM Keyifli Dinlemeler Diler... Yayını duymak için yukarıdaki Play butonuna basınız.
+            Yazgülüm FM Keyifli Dinlemeler Diler... Sesi duymak için siyah kutu içindeki Play butonuna tıklayınız.
         </marquee>
     </div>
 
@@ -119,7 +139,6 @@
     var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
-    // EMOJİLER
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
@@ -133,7 +152,6 @@
     document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
 
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    
     function joinChat() {
         const n = document.getElementById('nick-input').value.trim();
         const p = document.getElementById('pass-input').value.trim();
@@ -141,7 +159,6 @@
     }
 
     socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
-    
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
