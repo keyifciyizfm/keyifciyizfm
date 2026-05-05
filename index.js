@@ -10,12 +10,11 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
-let userStatus = {}; 
-let bannedIPs = [];
-
+let userStatus = {}; // { 'Nick': DurumKodu (0:Normal, 1:Susturuldu, 2:Engellendi) }
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
+// Emoji Çözücü Fonksiyon
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
@@ -31,7 +30,10 @@ function parseEmojis(text) {
 }
 
 io.on('connection', (socket) => {
+
     socket.on('join', (data) => {
+        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
+        
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
@@ -48,14 +50,7 @@ io.on('connection', (socket) => {
         io.emit('user list', Object.values(users));
     });
 
-    // Renk Değiştirme Dinleyicisi
-    socket.on('update color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            io.emit('user list', Object.values(users)); // Listeyi güncelle ki nick rengi değişsin
-        }
-    });
-
+    // Durum Güncelleme (Mavi/Kırmızı Kutu)
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
@@ -68,10 +63,26 @@ io.on('connection', (socket) => {
         io.emit('user list', Object.values(users));
     });
 
+    // Renk Güncelleme
+    socket.on('update color', (newColor) => {
+        if (users[socket.id]) {
+            users[socket.id].color = newColor;
+            io.emit('user list', Object.values(users));
+        }
+    });
+
+    // Sohbet Temizleme (Yönetici Özel)
+    socket.on('clear chat', () => {
+        if (socket.role === 'Yönetici') {
+            io.emit('chat cleared');
+        }
+    });
+
+    // Mesajlaşma
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
-            if (userStatus[u.nick] === 2) return;
+            if (userStatus[u.nick] === 2) return; // Engelli ise engelle
 
             const msgData = { 
                 user: u.nick, 
@@ -80,9 +91,9 @@ io.on('connection', (socket) => {
                 style: data.style 
             };
 
-            if (userStatus[u.nick] === 1) {
+            if (userStatus[u.nick] === 1) { // Susturulmuş ise
                 msgData.isMuted = true;
-                socket.emit('chat message', msgData);
+                socket.emit('chat message', msgData); // Kendine gönder
                 Object.keys(users).forEach(id => {
                     if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', msgData);
                 });
@@ -97,4 +108,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+server.listen(process.env.PORT || 3000, () => console.log('Sunucu 3000 portunda aktif.'));
