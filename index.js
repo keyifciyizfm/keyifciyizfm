@@ -52,28 +52,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('chat message', (data) => {
-        if (users[socket.id]) {
+        if (users[socket.id] && data.text) {
             const u = users[socket.id];
-            // Mesaj boş değilse gönder
-            if(data.text && data.text.trim() !== "") {
-                io.emit('chat message', { 
-                    user: u.nick, 
-                    text: data.text, 
-                    color: u.color 
-                });
-            }
+            io.emit('chat message', { 
+                user: u.nick, 
+                text: data.text, 
+                color: u.color 
+            });
         }
     });
 
     socket.on('disconnect', () => {
-        if (users[socket.id]) { 
-            delete users[socket.id]; 
-            io.emit('user list', Object.values(users)); 
-        }
+        if (users[socket.id]) { delete users[socket.id]; io.emit('user list', Object.values(users)); }
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu ${PORT} portunda çalışıyor...`);
-});
+server.listen(process.env.PORT || 3000);
