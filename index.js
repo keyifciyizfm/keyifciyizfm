@@ -1,219 +1,99 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Canlı Sohbet & Mixer</title>
-    <style>
-        /* SENİN ORİJİNAL TASARIMIN */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
-        #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
-        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
-        .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
-        .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; }
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-        /* YENİ: YÜZEN MIXER PANELİ */
-        #floating-mixer { 
-            position: absolute; top: 80px; left: 50px; width: 380px; 
-            background: #2c3e50; border: 3px solid #1a252f; border-radius: 12px; 
-            z-index: 3000; display: none; flex-direction: column; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
-        }
-        #mixer-header { background: #1a252f; padding: 12px; color: #2ecc71; font-weight: bold; cursor: move; display: flex; justify-content: space-between; border-radius: 8px 8px 0 0; }
-        .mixer-body { padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .mixer-row { background: #34495e; padding: 10px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; }
-        #playlist-area { background: #000; height: 200px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 5px; font-size: 11px; }
-        .track-item { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #222; }
-        .led { width: 12px; height: 12px; background: #333; border-radius: 50%; }
-        .led-live { background: #ff4757; box-shadow: 0 0 10px #ff4757; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.3; } }
-    </style>
-</head>
-<body>
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    maxHttpBufferSize: 1e8 // Ses paketleri için yüksek limit
+});
 
-<div id="login-overlay">
-    <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..."></div>
-        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px; background:#2ecc71; color:#000;">BAĞLAN</button>
-    </div>
-</div>
+app.use(express.static(path.join(__dirname, 'public')));
 
-<div id="chat-container">
-    <div id="top-gradient"></div>
-    <div id="action-bar">
-        <div class="tool-group"><button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button></div>
-        <div class="tool-group">
-            <button class="f-btn" onclick="changeFontSize(2)">A+</button>
-            <button class="f-btn" onclick="changeFontSize(-2)">A-</button>
-        </div>
-        <div class="tool-group" id="admin-tools" style="display:none;">
-            <button class="f-btn" style="color:#f1c40f; border-color:#f1c40f;" onclick="toggleMixer()">🎚️ MASTER MIXER</button>
-            <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
-            <input type="file" id="bg-upload" style="display:none;" onchange="uploadBg(this)">
-            <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Arkaplan</button>
-        </div>
-        <div style="flex:1;"></div>
-        <button class="f-btn" onclick="location.reload()">Çıkış</button>
-    </div>
+let users = {}; 
+let userStatus = {}; 
+let currentBackground = ""; 
+let adminCount = 0; 
+let shutdownTimer = null; 
 
-    <div id="floating-mixer">
-        <div id="mixer-header">
-            <span>🎚️ YAYIN MIXERI V1.0</span>
-            <button onclick="toggleMixer()" style="background:none; border:none; color:#fff; cursor:pointer;">[X]</button>
-        </div>
-        <div class="mixer-body">
-            <div class="mixer-row">
-                <button id="live-toggle" class="f-btn" style="background:#27ae60; width:150px;" onclick="toggleBroadcasting()">🔴 YAYINI BAŞLAT</button>
-                <div id="live-led" class="led"></div>
-            </div>
-            <div class="mixer-row">
-                <label style="font-size:11px; color:#fff;"><input type="checkbox" id="mic-check"> MİKROFONU AÇ</label>
-                <input type="range" id="mic-vol" min="0" max="1" step="0.1" value="0.8" style="width:100px;">
-            </div>
-            <div style="font-size:11px; margin-top:5px;">MÜZİK KÜTÜPHANESİ (MAX 30)</div>
-            <input type="file" id="music-load" multiple accept="audio/*" style="font-size:10px; color:#aaa;">
-            <div id="playlist-area"></div>
-        </div>
-    </div>
+const masterNick = "Keyifciyiz_Fm";
+const masterPass = "123456";
 
-    <div id="main-area">
-        <div id="messages"></div>
-        <div id="user-list">
-            <div id="fixed-admin">
-                <div style="font-size:9px; color:#666;">YAYINDA</div>
-                <div id="admin-display-name">Keyifciyiz_Fm</div>
-            </div>
-            <div id="users"></div>
-        </div>
-    </div>
-
-    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
-        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
-        <button type="submit" class="f-btn">GÖNDER</button>
-    </form>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
-    let myNick = "", myRole = "", audioCtx, gainNode, nextTime = 0, isLive = false;
-    let playlistFiles = [];
-
-    // --- MIXER SÜRÜKLEME ---
-    const mixer = document.getElementById('floating-mixer');
-    const mHead = document.getElementById('mixer-header');
-    let isDragging = false;
-    mHead.onmousedown = () => isDragging = true;
-    window.onmouseup = () => isDragging = false;
-    window.onmousemove = (e) => { if(isDragging) { mixer.style.left = e.clientX-190+'px'; mixer.style.top = e.clientY-20+'px'; } };
-
-    function toggleMixer() { mixer.style.display = mixer.style.display === 'flex' ? 'none' : 'flex'; }
-
-    // --- MÜZİK YÜKLEME VE LİSTELEME ---
-    document.getElementById('music-load').onchange = (e) => {
-        playlistFiles = Array.from(e.target.files).slice(0, 30);
-        const area = document.getElementById('playlist-area');
-        area.innerHTML = "";
-        playlistFiles.forEach((f, i) => {
-            area.innerHTML += `<div class="track-item"><span>${i+1}. ${f.name.slice(0,25)}</span> <button class="f-btn" onclick="playMusic(${i})">ÇAL</button></div>`;
-        });
+// EMOJİ PARSER (Senin Orijinal Fonksiyonun)
+function parseEmojis(text) {
+    const emojiMap = {
+        ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
+        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
+        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
     };
-
-    // --- SES MOTORU (YAYINCI VE DİNLEYİCİ İÇİN) ---
-    function initAudio() {
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            gainNode = audioCtx.createGain();
-            gainNode.connect(audioCtx.destination);
-        }
+    let newText = text;
+    for (const [code, id] of Object.entries(emojiMap)) {
+        const url = `https://fonts.gstatic.com/s/e/notoemoji/latest/${id}/512.webp`;
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
     }
+    return newText;
+}
 
-    async function toggleBroadcasting() {
-        initAudio();
-        if (!isLive) {
-            isLive = true;
-            document.getElementById('live-toggle').innerText = "⬛ YAYINI DURDUR";
-            document.getElementById('live-toggle').style.background = "#c0392b";
-            document.getElementById('live-led').classList.add('led-live');
-        } else {
-            location.reload(); // En güvenli durdurma yöntemi
-        }
-    }
-
-    async function playMusic(index) {
-        if (!isLive) return alert("Önce yayını başlatmalısın!");
-        const file = playlistFiles[index];
-        const buffer = await file.arrayBuffer();
-        const decoded = await audioCtx.decodeAudioData(buffer);
+io.on('connection', (socket) => {
+    socket.on('join', (data) => {
+        const isTargetAdmin = (data.nick === masterNick);
+        if (adminCount === 0 && !isTargetAdmin) return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
+        if (isTargetAdmin && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
         
-        const source = audioCtx.createBufferSource();
-        source.buffer = decoded;
-        source.connect(gainNode);
-        source.start(0);
-
-        // Ses paketlerini socket üzerinden gönder (Örn: Stream API veya ScriptProcessor ile)
-        // Basitlik ve performans için burada yayıncı kendi sesini de duyar.
-        socket.emit('audio-packet', buffer); 
-    }
-
-    // --- DİNLEYİCİ SESİ ALMA ---
-    socket.on('audio-stream', async (buf) => {
-        initAudio();
-        const decoded = await audioCtx.decodeAudioData(buf);
-        const source = audioCtx.createBufferSource();
-        source.buffer = decoded;
-        source.connect(gainNode);
-        if (nextTime < audioCtx.currentTime) nextTime = audioCtx.currentTime + 0.1;
-        source.start(nextTime);
-        nextTime += decoded.duration;
+        if (isTargetAdmin) {
+            adminCount++;
+            if (shutdownTimer) { clearTimeout(shutdownTimer); shutdownTimer = null; }
+        }
+        
+        socket.nick = data.nick || "Misafir";
+        socket.role = isTargetAdmin ? 'Yönetici' : 'Dinleyici';
+        socket.color = isTargetAdmin ? (data.color || '#ff4757') : '#2ecc71';
+        
+        if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
+        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
+        
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        socket.emit('status update', userStatus[socket.nick]);
+        if (currentBackground !== "") socket.emit('background changed', currentBackground);
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    // --- SENİN ORİJİNAL CHAT FONKSİYONLARIN ---
-    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    function joinChat() {
-        initAudio(); // Tarayıcı engelini aşmak için
-        const n = document.getElementById('nick-input').value.trim();
-        const p = document.getElementById('pass-input').value.trim();
-        if(n) socket.emit('join', { nick: n, password: p });
-    }
-
-    socket.on('login success', d => {
-        myNick = d.nick; myRole = d.role;
-        document.getElementById('login-overlay').style.display = 'none';
-        if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex';
+    // SES AKTARIMI (Yönetici -> Dinleyiciler)
+    socket.on('audio-packet', (data) => {
+        if (socket.role === 'Yönetici') {
+            socket.broadcast.emit('audio-stream', data);
+        }
     });
 
-    socket.on('chat message', d => {
-        const div = document.createElement('div');
-        div.innerHTML = `<b style="color:${d.color}">${d.user}:</b> <span>${d.text}</span>`;
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    socket.on('chat message', (data) => {
+        if (users[socket.id]) {
+            const u = users[socket.id];
+            if (userStatus[u.nick] === 2) return;
+            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
+            io.emit('chat message', msgData);
+        }
     });
 
-    socket.on('user list', data => {
-        const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
-        data.list.forEach(u => {
-            if(u.nick !== "Keyifciyiz_Fm") {
-                uDiv.innerHTML += `<div style="padding:5px; color:${u.color}">• ${u.nick}</div>`;
+    socket.on('update status', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        userStatus[data.target] = data.state;
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+    });
+
+    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
+    socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
+    
+    socket.on('disconnect', () => {
+        if (users[socket.id] && users[socket.id].role === 'Yönetici') {
+            adminCount--;
+            if (adminCount <= 0) {
+                shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000);
             }
-        });
+        }
+        delete users[socket.id];
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
+});
 
-    function sendMessage(e) {
-        e.preventDefault();
-        const i = document.getElementById('input');
-        if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; }
-    }
-</script>
-</body>
-</html>
+server.listen(3000);
