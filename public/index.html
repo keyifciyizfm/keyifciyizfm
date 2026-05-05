@@ -1,217 +1,44 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Canlı Radyo & Mixer</title>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        
-        /* LOGIN */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
-        #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        
-        /* CHAT CONTAINER */
-        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
-        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 15px; font-size: 11px; cursor: pointer; border-radius: 3px; border: 1px solid #000; }
-        
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; }
+// --- SES MOTORU DEĞİŞKENLERİ ---
+let audioContext;
+let processor;
+let input;
+let globalStream;
 
-        /* YÜZEN MIXER PANELİ */
-        #floating-mixer { 
-            position: absolute; top: 80px; left: 50px; width: 380px; 
-            background: #2c3e50; border: 3px solid #1a252f; border-radius: 12px; 
-            z-index: 3000; display: none; flex-direction: column; 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
-        }
-        #mixer-header { background: #1a252f; padding: 12px; color: #2ecc71; font-weight: bold; cursor: move; display: flex; justify-content: space-between; border-radius: 8px 8px 0 0; }
-        .mixer-body { padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .mixer-row { background: #34495e; padding: 10px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; }
-        #playlist-area { background: #000; height: 180px; overflow-y: auto; border: 1px solid #444; border-radius: 4px; padding: 5px; margin-top: 5px; }
-        .track-item { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #222; font-size: 11px; color: #fff; }
-        .led { width: 12px; height: 12px; background: #333; border-radius: 50%; }
-        .led-live { background: #ff4757; box-shadow: 0 0 10px #ff4757; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.3; } }
-    </style>
-</head>
-<body>
+// 1. YÖNETİCİ: SESİ YAKALA VE SUNUCUYA GÖNDER
+async function startBroadcasting() {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Mikrofonu al
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    input = audioContext.createMediaStreamSource(stream);
+    
+    // Ses paketlerini işle (Buffer size: 4096 idealdir)
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+    
+    input.connect(processor);
+    processor.connect(audioContext.destination);
 
-<div id="login-overlay">
-    <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Yönetici Şifresi..."></div>
-        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px; background:#2ecc71; color:#000;">BAĞLAN</button>
-    </div>
-</div>
-
-<div id="chat-container">
-    <div id="top-gradient"></div>
-    <div id="action-bar">
-        <div style="padding: 0 15px; font-weight: bold; color: #2ecc71;">Keyifciyiz FM</div>
-        <div id="admin-tools" style="display:none;">
-            <button class="f-btn" style="color:#f1c40f;" onclick="toggleMixer()">🎚️ MASTER MIXER</button>
-        </div>
-        <div style="flex:1;"></div>
-        <button class="f-btn" onclick="location.reload()">Çıkış</button>
-    </div>
-
-    <div id="floating-mixer">
-        <div id="mixer-header">
-            <span>🎚️ RADYO YAYIN MIXERI</span>
-            <button onclick="toggleMixer()" style="background:none; border:none; color:#fff; cursor:pointer;">[X]</button>
-        </div>
-        <div class="mixer-body">
-            <div class="mixer-row">
-                <button id="live-btn" class="f-btn" style="background:#27ae60; width:150px;" onclick="startBroadcast()">🔴 YAYINI BAŞLAT</button>
-                <div id="live-led" class="led"></div>
-            </div>
-            <div class="mixer-row">
-                <label style="font-size:11px; color:#fff;"><input type="checkbox" id="mic-toggle" checked> MİKROFON AKTİF</label>
-                <input type="range" id="volume-control" min="0" max="1" step="0.1" value="0.8" style="width:80px;">
-            </div>
-            <div style="font-size:11px; color:#aaa;">MÜZİK LİSTESİ (Max 30)</div>
-            <input type="file" id="music-input" multiple accept="audio/*" style="font-size:10px; color:#ccc;">
-            <div id="playlist-area"></div>
-        </div>
-    </div>
-
-    <div id="main-area">
-        <div id="messages"></div>
-        <div id="user-list">
-            <b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:8px 0; border:#333 1px solid;">
-            <div id="users"></div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // --- TEMEL DEĞİŞKENLER ---
-    let myNick = "", myRole = "";
-    let peer = null;
-    let audioContext, mixerDestination, currentMusicSource;
-    let isLive = false;
-
-    // Sabit Yayın Kanalı ID'si (Bunu istediğin bir isim yapabilirsin)
-    const STREAM_ID = "keyifciyiz-fm-global-kanal";
-
-    // --- MIXER SÜRÜKLEME MANTIĞI ---
-    const mixer = document.getElementById('floating-mixer');
-    const mHead = document.getElementById('mixer-header');
-    let isDragging = false;
-    mHead.onmousedown = () => isDragging = true;
-    window.onmouseup = () => isDragging = false;
-    window.onmousemove = (e) => { if(isDragging) { mixer.style.left = e.clientX-190+'px'; mixer.style.top = e.clientY-20+'px'; } };
-
-    function toggleMixer() { mixer.style.display = mixer.style.display === 'flex' ? 'none' : 'flex'; }
-    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-
-    // --- GİRİŞ VE BAĞLANTI ---
-    function joinChat() {
-        myNick = document.getElementById('nick-input').value.trim();
-        if(!myNick) return alert("Lütfen bir nick girin!");
-
-        if(myNick === "Keyifciyiz_Fm") {
-            myRole = "Yönetici";
-            document.getElementById('admin-tools').style.display = 'flex';
-            // Yönetici olarak Peer sunucusunu bu ID ile başlat
-            peer = new Peer(STREAM_ID); 
-        } else {
-            myRole = "Dinleyici";
-            peer = new Peer(); // Dinleyiciye rastgele ID
-            setTimeout(connectToRadio, 1500); // 1.5 sn sonra yayına bağlanmayı dene
-        }
-        
-        document.getElementById('login-overlay').style.display = 'none';
-        addUserToList(myNick);
-    }
-
-    // --- YÖNETİCİ: SES MİKSERİNİ VE YAYINI KUR ---
-    async function startBroadcast() {
-        if(isLive) return;
-
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        mixerDestination = audioContext.createMediaStreamDestination();
-
-        // 1. Mikrofonu Miksere Ekle
-        if(document.getElementById('mic-toggle').checked) {
-            try {
-                const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const micNode = audioContext.createMediaStreamSource(micStream);
-                micNode.connect(mixerDestination);
-            } catch(e) { alert("Mikrofon bulunamadı!"); }
-        }
-
-        // 2. Dinleyiciler Aradığında Mikser Çıkışını Gönder
-        peer.on('call', (call) => {
-            call.answer(mixerDestination.stream);
-        });
-
-        document.getElementById('live-led').classList.add('led-live');
-        document.getElementById('live-btn').innerText = "YAYIN AKTİF";
-        isLive = true;
-    }
-
-    // --- MÜZİK ÇALMA (MİKSERE GÖNDERME) ---
-    async function playTrack(index) {
-        if(!isLive) await startBroadcast();
-        
-        const file = document.getElementById('music-input').files[index];
-        const arrayBuffer = await file.arrayBuffer();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-        if(currentMusicSource) currentMusicSource.stop();
-        
-        currentMusicSource = audioContext.createBufferSource();
-        currentMusicSource.buffer = audioBuffer;
-
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = document.getElementById('volume-control').value;
-
-        currentMusicSource.connect(gainNode);
-        gainNode.connect(mixerDestination); // Sesi Yayına Gönder
-        gainNode.connect(audioContext.destination); // Sesi Sen de Duy
-        
-        currentMusicSource.start();
-    }
-
-    // --- DİNLEYİCİ: YAYINI ALMA ---
-    function connectToRadio() {
-        // Yönetici kanalını ara (boş bir stream göndererek)
-        const call = peer.call(STREAM_ID, new MediaStream());
-        
-        call.on('stream', (remoteStream) => {
-            const audio = new Audio();
-            audio.srcObject = remoteStream;
-            audio.play().catch(e => {
-                const msg = document.createElement('div');
-                msg.innerHTML = "<b style='color:red;'>SİSTEM:</b> Yayını duymak için sayfada herhangi bir yere tıklayın.";
-                document.getElementById('messages').appendChild(msg);
-            });
-        });
-    }
-
-    // Liste Güncelleme
-    document.getElementById('music-input').onchange = (e) => {
-        const area = document.getElementById('playlist-area');
-        area.innerHTML = "";
-        Array.from(e.target.files).slice(0,30).forEach((f, i) => {
-            area.innerHTML += `<div class="track-item"><span>${i+1}. ${f.name.slice(0,25)}</span><button class="f-btn" onclick="playTrack(${i})">ÇAL</button></div>`;
-        });
+    processor.onaudioprocess = (e) => {
+        const left = e.inputBuffer.getChannelData(0);
+        // Ham ses verisini sunucuya gönder
+        socket.emit('audio-stream', new Float32Array(left));
     };
+    
+    document.getElementById('live-led').classList.add('led-live');
+    console.log("Yayın başladı...");
+}
 
-    function addUserToList(nick) {
-        const div = document.createElement('div');
-        div.style.padding = "5px";
-        div.innerText = "• " + nick;
-        document.getElementById('users').appendChild(div);
-    }
-</script>
-</body>
-</html>
+// 2. DİNLEYİCİ: GELEN SESİ HOPARLÖRE VER
+socket.on('audio-data', (data) => {
+    if (myRole === "admin") return; // Yönetici kendi sesini yankı yapmasın
+
+    if (!audioContext) audioContext = new AudioContext();
+    
+    const audioBuffer = audioContext.createBuffer(1, 4096, audioContext.sampleRate);
+    audioBuffer.getChannelData(0).set(new Float32Array(data));
+    
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start();
+});
