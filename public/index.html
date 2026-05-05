@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Sohbet - Keyifciyiz FM</title>
     <style>
-        /* Mevcut stillerini korudum, sadece kutucuklar için eklemeler yaptım */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
@@ -18,21 +17,18 @@
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         
-        /* --- DENETİM KUTUCUĞU STİLLERİ --- */
+        /* --- YENİ KUTUCUK STİLLERİ --- */
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 10px; }
         .status-box { 
             width: 18px; height: 18px; border: 1px solid #444; 
             display: flex; align-items: center; justify-content: center; 
             font-size: 14px; font-weight: bold; border-radius: 2px;
-            transition: all 0.2s ease;
+            transition: 0.2s;
         }
-        /* Durum 0: Boş (Normal) */
-        .status-0 { background: #222; color: transparent; border-color: #555; }
-        /* Durum 1: Mavi ve / (Susturuldu) */
-        .status-1 { background: #3498db; color: #fff; border-color: #2980b9; }
-        /* Durum 2: Kırmızı ve - (Engellendi) */
-        .status-2 { background: #e74c3c; color: #fff; border-color: #c0392b; }
-        
+        .status-0 { background: #222; } /* Normal */
+        .status-1 { background: #3498db; color: #fff; border-color: #2980b9; } /* Mavi / */
+        .status-2 { background: #e74c3c; color: #fff; border-color: #c0392b; } /* Kırmızı - */
+
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #333; border: 2px solid #555; padding: 15px; flex-wrap: wrap; gap: 10px; width: 280px; border-radius: 8px; box-shadow: 0 -5px 25px #000; z-index: 50; }
         .emoji-item { cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
         .emoji-item img { width: 24px; height: 24px; pointer-events: none; }
@@ -54,13 +50,18 @@
     </div>
 </div>
 
+<div id="custom-menu">
+    <div class="menu-item" onclick="muteAction()">🔇 Sustur/Aç</div>
+    <div class="menu-item" onclick="kickAction()" style="color:#ff4757;">🚪 Odadan At</div>
+</div>
+
 <div id="chat-container">
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button>
         <div style="margin-left: 20px; border-left: 1px solid #555; padding-left: 15px; display: flex; align-items: center; gap: 5px;">
             <button class="f-btn" onclick="changeFontSize(2)">A+</button>
-            <button class="f-btn" onclick="changeFontSize(-2)" style="margin-right: 15px;">A-</button>
+            <button class="f-btn" onclick="changeFontSize(-2)">A-</button>
             <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
         </div>
         <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="margin-left:20px; width:35px; height:22px; cursor:pointer;">
@@ -84,103 +85,85 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71", styles = { bold: false, italic: false, underline: false };
-    
-    // Kullanıcı durumlarını takip etmek için yerel liste (0: Normal, 1: Sustur, 2: Engel)
-    var userStatusStates = {};
+    var myNick = "", myRole = "", selectedTarget = "", currentFontSize = 13, selectedColor = "#2ecc71", styles = { bold: false };
+    var userStatusStates = {}; // Yerel durum takibi
+
+    // Emojiler
+    const emojis = [{c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'}];
+    const panel = document.getElementById('emoji-panel');
+    emojis.forEach(e => {
+        let d = document.createElement('div'); d.className = 'emoji-item';
+        d.innerHTML = `<img src="https://raw.githubusercontent.com/jakejarvis/apple-emoji-svg/main/emoji/${e.i}.svg">`;
+        d.onclick = () => { document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
+        panel.appendChild(d);
+    });
 
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
     function joinChat() { const n = document.getElementById('nick-input').value, p = document.getElementById('pass-input').value; if(n) socket.emit('join', { nick: n, password: p }); }
     
     socket.on('login success', d => { myNick = d.nick; myRole = d.role; document.getElementById('login-overlay').style.display = 'none'; });
 
+    // --- MESAJLARIN GELİŞİ ---
     socket.on('chat message', d => {
-        const state = userStatusStates[d.user] || 0;
-        
-        // DURUM 2: Engellenmiş (Hiçbir şey gösterme)
-        if (state === 2) return;
-
-        // DURUM 1: Susturulmuş (Sadece yönetici görebilir)
-        if (state === 1 && myRole !== 'Yönetici') return;
+        // Eğer mesaj susturulmuşsa ve ben yönetici değilsem, mesajı gösterme
+        if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
 
         const div = document.createElement('div');
         div.style.marginBottom = "8px";
-        const s = d.style || {};
-        
-        // Eğer susturulmuşsa yöneticinin ekranında "susturulmuş" olduğunu belirtelim
-        const prefix = (state === 1) ? "<small style='color:#777'>[Susturuldu] </small>" : "";
-        
-        div.innerHTML = `${prefix}<b style="color:${d.color}">${d.user}:</b> 
-            <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'};">${d.text}</span>`;
+        const pref = d.isMuted ? "<small style='color:gray'>[Susturuldu] </small>" : "";
+        div.innerHTML = `${pref}<b style="color:${d.color}">${d.user}:</b> <span>${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
+    // --- KULLANICI LİSTESİ VE KUTUCUKLAR ---
     socket.on('user list', list => {
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         list.forEach(u => {
-            const i = document.createElement('div'); 
-            i.className = 'user-item';
+            const i = document.createElement('div'); i.className = 'user-item';
             
-            // --- KUTUCUK OLUŞTURMA ---
+            // Kutucuk oluştur
             const box = document.createElement('div');
-            const currentState = userStatusStates[u.nick] || 0;
-            box.className = `status-box status-${currentState}`;
+            const uStatus = u.status || 0;
+            box.className = `status-box status-${uStatus}`;
             
-            // Kutucuk içi simgeler
-            if (currentState === 1) box.innerText = "/";
-            if (currentState === 2) box.innerText = "-";
+            if(uStatus === 1) box.innerText = "/";
+            if(uStatus === 2) box.innerText = "-";
 
-            // Sadece yönetici kutucuğa tıklayabilir
+            // Sadece yönetici tıklayabilir
             if (myRole === 'Yönetici' && u.nick !== myNick) {
                 box.style.cursor = "pointer";
                 box.onclick = () => {
-                    let nextState = (currentState + 1) % 3;
-                    // Durumu sunucuya ve diğer herkese bildir
-                    socket.emit('update status', { target: u.nick, state: nextState });
+                    let next = (uStatus + 1) % 3;
+                    socket.emit('update status', { target: u.nick, state: next });
                 };
             }
 
             i.appendChild(box);
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.style.color = u.color;
-            let tag = (u.nick === "Keyifciyiz_Fm") ? " (Dj)" : (u.role === "Yönetici" ? " (Sahibi)" : "");
-            nameSpan.innerText = u.nick + tag;
-            i.appendChild(nameSpan);
-            
+            const name = document.createElement('span');
+            name.style.color = u.color;
+            name.innerText = u.nick + (u.nick === "Keyifciyiz_Fm" ? " (Dj)" : "");
+            i.appendChild(name);
             uDiv.appendChild(i);
         });
     });
 
-    // Sunucudan gelen durum güncellemesini yakala
-    socket.on('chat message', d => {
-    // ÖNEMLİ: Eğer mesaj susturulmuşsa (isMuted) ve sen yönetici değilsen görme
-    if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
-
-    const div = document.createElement('div');
-    div.style.marginBottom = "8px";
-    const s = d.style || {};
-    
-    // Susturulmuş mesajlara yöneticinin göreceği küçük bir etiket ekle
-    const prefix = d.isMuted ? "<small style='color:gray'>[Susturuldu] </small>" : "";
-    
-    div.innerHTML = `${prefix}<b style="color:${d.color}">${d.user}:</b> 
-        <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}">${d.text}</span>`;
-    
-    document.getElementById('messages').appendChild(div);
-    document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-});
-        userStatusStates[data.target] = data.state;
-        // Listeyi güncellemek için sunucudan tekrar liste istemek yerine görseli yeniler (veya sunucu zaten user list gönderir)
-    });
-
-    // (Diğer Emoji, Font ve Stil fonksiyonların aynı kalıyor...)
+    // Standart fonksiyonlar
     function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function changeColor(c) { selectedColor = c; document.getElementById('input').style.color = c; }
     function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
+    
+    // Sağ tık menüsü susturma için (isteğe bağlı)
+    function muteAction() { 
+        let currentState = userStatusStates[selectedTarget] || 0;
+        socket.emit('update status', { target: selectedTarget, state: 1 }); 
+        document.getElementById('custom-menu').style.display = 'none';
+    }
+    function kickAction() { socket.emit('admin command', {action: 'kick', targetNick: selectedTarget}); document.getElementById('custom-menu').style.display = 'none'; }
+    function openAdminMenu(t, e) { if (myRole !== 'Yönetici' || t === myNick) return; selectedTarget = t; const m = document.getElementById('custom-menu'); m.style.display = 'block'; m.style.left = e.pageX + "px"; m.style.top = e.pageY + "px"; e.stopPropagation(); }
+    document.addEventListener('click', () => { document.getElementById('custom-menu').style.display = 'none'; document.getElementById('emoji-panel').style.display = 'none'; });
 </script>
 </body>
 </html>
