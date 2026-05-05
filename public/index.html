@@ -71,7 +71,8 @@
         </div>
         <div class="tool-group" id="admin-tools" style="display:none;">
             <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
-            <button class="f-btn" style="color:#3498db;" onclick="changeBg()">🖼️ Resim</button>
+            <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Dosya Seç</button>
+            <input type="file" id="bg-upload" style="display:none;" accept="image/*" onchange="uploadBg(this)">
         </div>
         <div style="flex: 1;"></div>
         <button class="f-btn" style="margin-right:10px;" onclick="location.reload()">Çıkış</button>
@@ -140,10 +141,20 @@
 
     socket.on('chat cleared', () => { 
         document.querySelectorAll('.msg-content').forEach(e => e.remove());
-        const div = document.createElement('div'); div.className="msg-content";
-        div.style.textAlign="center"; div.style.color="#555"; div.innerText = "--- Sohbet Temizlendi ---";
-        document.getElementById('messages').appendChild(div);
     });
+
+    // Dosyadan Resim Yükleme (Base64)
+    function uploadBg(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = e.target.result;
+                if(imageData.length > 2000000) { alert("Resim dosyası çok büyük!"); return; }
+                socket.emit('change background', imageData);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
 
     socket.on('background changed', url => {
         const m = document.getElementById('messages');
@@ -177,7 +188,6 @@
     });
 
     function clearChat() { if(confirm("Sohbeti temizle?")) socket.emit('clear chat'); }
-    function changeBg() { const u = prompt("Resim Linki:"); if(u) socket.emit('change background', u); }
     function handleColorChange(c) { selectedColor = c; document.getElementById('input').style.color = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
