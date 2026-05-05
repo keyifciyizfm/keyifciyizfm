@@ -18,7 +18,7 @@ let shutdownTimer = null;
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// GERÇEKÇİ EMOJİ DÖNÜŞTÜRÜCÜ
+// EMOJİ ÇÖZÜCÜ
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
@@ -37,7 +37,6 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
         
-        // ODA DURUM KONTROLÜ
         if (adminCount === 0 && !isTargetAdmin) {
             return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
         }
@@ -51,13 +50,13 @@ io.on('connection', (socket) => {
             if (shutdownTimer) {
                 clearTimeout(shutdownTimer);
                 shutdownTimer = null;
-                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yeni yayıncı bağlandı, yayın devralındı. Keyifli dinlemeler!", color: "#2ecc71" });
+                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yeni yayıncı bağlandı, yayın devralındı.", color: "#2ecc71" });
             }
         }
         
         socket.nick = data.nick || "Misafir";
         socket.role = isTargetAdmin ? 'Yönetici' : 'Dinleyici';
-        socket.color = isTargetAdmin ? '#ff4757' : '#2ecc71';
+        socket.color = isTargetAdmin ? (data.color || '#ff4757') : '#2ecc71';
         
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
         users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
@@ -65,21 +64,19 @@ io.on('connection', (socket) => {
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         socket.emit('status update', userStatus[socket.nick]);
         if (currentBackground !== "") socket.emit('background changed', currentBackground);
-        io.emit('user list', Object.values(users));
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
-        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
-                if(statusMsg !== "") io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
                 users[id].status = data.state;
                 io.to(id).emit('status update', data.state);
             }
         });
-        io.emit('user list', Object.values(users));
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
     socket.on('chat message', (data) => {
@@ -98,7 +95,13 @@ io.on('connection', (socket) => {
 
     socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
     socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
-    socket.on('update color', (newColor) => { if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); } });
+    
+    socket.on('update color', (newColor) => { 
+        if (users[socket.id]) { 
+            users[socket.id].color = newColor; 
+            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) }); 
+        } 
+    });
     
     socket.on('disconnect', () => {
         if (users[socket.id]) {
@@ -106,7 +109,7 @@ io.on('connection', (socket) => {
                 adminCount--;
                 if (adminCount <= 0) {
                     adminCount = 0;
-                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı değişikliği yapılıyor, oda 60 saniye içinde devredilecek. Lütfen bekleyiniz...", color: "#f1c40f" });
+                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı değişikliği yapılıyor, oda 60 saniye içinde devredilecek...", color: "#f1c40f" });
                     shutdownTimer = setTimeout(() => {
                         io.emit('force logout'); 
                         users = {};
@@ -115,7 +118,7 @@ io.on('connection', (socket) => {
                 }
             }
             delete users[socket.id];
-            io.emit('user list', Object.values(users));
+            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
         }
     });
 });
