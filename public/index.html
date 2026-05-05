@@ -8,7 +8,7 @@
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; }
         
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
@@ -22,10 +22,12 @@
 
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; position: relative; background-size: cover; background-position: center; }
+        
+        /* Arka plan varken mesajların arkasında kalan siyah perde */
         .bg-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1; display: none; pointer-events: none; }
-        .msg-content { position: relative; z-index: 2; margin-bottom: 8px; line-height: 1.4; }
+        .msg-content { position: relative; z-index: 2; margin-bottom: 8px; }
 
-        #ban-overlay { display: none; position: absolute; top: 8px; left: 8px; width: calc(75% - 6px); height: calc(100% - 16px); background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; text-align: center; }
+        #ban-overlay { display: none; position: absolute; top: 8px; left: 8px; width: calc(75% - 6px); height: calc(100% - 16px); background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
 
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
@@ -46,7 +48,7 @@
         <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
         <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         <div id="pass-area" style="display:none;">
-            <input type="password" id="pass-input" placeholder="Yönetici Şifresi..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+            <input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         </div>
         <button class="f-btn" style="margin: 0 auto; padding: 10px 30px; font-weight:bold;" onclick="joinChat()">BAĞLAN</button>
         <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:10px; display:none;"></p>
@@ -79,7 +81,7 @@
     </div>
 
     <div id="main-area">
-        <div id="ban-overlay"><h1>🚫</h1><h3>Yönetici Tarafından Engellendiniz!</h3></div>
+        <div id="ban-overlay"><h1>🚫</h1><h3>Engellendiniz!</h3></div>
         <div id="messages"><div class="bg-overlay" id="overlay"></div></div>
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
@@ -99,7 +101,6 @@
     var styles = { bold: false, italic: false, underline: false };
     var masterNick = "Keyifciyiz_Fm";
 
-    // Emoji Paneli
     const emojis = [
         {c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'},
         {c: ':fire:', i: '1f525'}, {c: ':rose:', i: '1f339'}, {c: ':thumbsup:', i: '1f44d'}, {c: ':microphone:', i: '1f399'},
@@ -119,8 +120,7 @@
         const n = document.getElementById('nick-input').value.trim();
         const p = document.getElementById('pass-input').value.trim();
         const err = document.getElementById('error-msg');
-        if(!n) { err.innerText="Nick girin!"; err.style.display="block"; return; }
-        if(n === masterNick && !p) { err.innerText="Şifre girin!"; err.style.display="block"; return; }
+        if(!n) return;
         socket.emit('join', { nick: n, password: p });
     }
 
@@ -143,13 +143,12 @@
         document.querySelectorAll('.msg-content').forEach(e => e.remove());
     });
 
-    // Dosyadan Resim Yükleme (Base64)
     function uploadBg(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const imageData = e.target.result;
-                if(imageData.length > 2000000) { alert("Resim dosyası çok büyük!"); return; }
+                if(imageData.length > 2500000) { alert("Resim çok büyük!"); return; }
                 socket.emit('change background', imageData);
             };
             reader.readAsDataURL(input.files[0]);
