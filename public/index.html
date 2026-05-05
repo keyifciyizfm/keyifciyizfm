@@ -12,7 +12,7 @@
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center; min-width: 40px; }
         .f-btn.active { background: #2ecc71; color: #000; font-weight: bold; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; position: relative; background-size: cover; background-position: center; }
@@ -70,7 +70,9 @@
 
     <div id="main-area">
         <div id="ban-overlay"><h1>🚫</h1><h3>Engellendiniz!</h3></div>
-        <div id="messages"><div class="bg-overlay" id="overlay"></div></div>
+        <div id="messages">
+            <div class="bg-overlay" id="overlay"></div>
+            </div>
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
     <div id="emoji-panel"></div>
@@ -86,7 +88,7 @@
     var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
-    // Emoji Listesi
+    // Emoji Paneli
     const emojis = [
         {c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'},
         {c: ':fire:', i: '1f525'}, {c: ':rose:', i: '1f339'}, {c: ':thumbsup:', i: '1f44d'}, {c: ':microphone:', i: '1f399'},
@@ -121,6 +123,15 @@
         document.getElementById('input').disabled = (s === 2);
     });
 
+    // TEMİZLEME DİNLEYİCİSİ (Kesin Çözüm)
+    socket.on('chat cleared', () => {
+        const msgBox = document.getElementById('messages');
+        // Arka plan perdesini koruyarak sadece mesajları siler
+        const overlay = document.getElementById('overlay');
+        msgBox.innerHTML = '';
+        msgBox.appendChild(overlay);
+    });
+
     socket.on('background changed', url => {
         document.getElementById('messages').style.backgroundImage = `url('${url}')`;
         document.getElementById('overlay').style.display = 'block';
@@ -130,12 +141,8 @@
         if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.className = "msg-content";
         const s = d.style || {};
-        
         let displayNick = d.user;
-        // Yöneticiye susturulanları gri etiketiyle göster
-        if(displayNick.includes("(Susturuldu)")) {
-            displayNick = `<span style="color:#777;">${d.user}</span>`;
-        }
+        if(displayNick.includes("(Susturuldu)")) displayNick = `<span style="color:#777;">${d.user}</span>`;
 
         div.innerHTML = `<b style="color:${d.color}">${displayNick}:</b> <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
