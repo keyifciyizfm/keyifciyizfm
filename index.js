@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let users = {}; 
 let userStatus = {}; 
 let currentBackground = ""; 
-let isAdminOnline = false; // Odanın açık/kapalı olma anahtarı
+let isAdminOnline = false; 
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
@@ -34,7 +34,6 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
 
-        // KURAL: Yönetici yoksa ve giren yönetici değilse odaya sokma
         if (!isAdminOnline && !isTargetAdmin) {
             return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
         }
@@ -43,7 +42,6 @@ io.on('connection', (socket) => {
             return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
         }
 
-        // Yönetici girince kilidi aç
         if (isTargetAdmin) isAdminOnline = true;
 
         socket.nick = data.nick || "Misafir";
@@ -92,7 +90,7 @@ io.on('connection', (socket) => {
             };
 
             if (userStatus[u.nick] === 1) {
-                socket.emit('chat message', msgData); // Kendine göster
+                socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
                     if (users[id].role === 'Yönetici' && id !== socket.id) {
                         io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
@@ -104,23 +102,14 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('clear chat', () => {
-        if (socket.role === 'Yönetici') io.emit('chat cleared');
-    });
-
-    socket.on('change background', (url) => { 
-        if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); }
-    });
-
-    socket.on('update color', (newColor) => {
-        if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); }
-    });
+    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
+    socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
+    socket.on('update color', (newColor) => { if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); } });
 
     socket.on('disconnect', () => {
         if (users[socket.id]) {
             if (users[socket.id].nick === masterNick) {
                 isAdminOnline = false;
-                // Yönetici çıkınca odadaki herkesi at
                 io.emit('force logout', 'Yayın sona erdi, oda kapatıldı!');
                 users = {}; 
             } else {
