@@ -123,7 +123,7 @@
     function toggleRadio() {
         if (!isPlaying) {
             // Stream URL'si sapircast olarak ayarlandı
-            const baseSrc = "http://sapircast.caster.fm:19788/listen.mp3";
+            const baseSrc = "https://sapircast.caster.fm:19788/listen.mp3";
             radio.src = baseSrc + "?nocache=" + Math.random();
             
             radio.play().then(() => {
