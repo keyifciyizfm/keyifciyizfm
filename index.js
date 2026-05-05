@@ -37,8 +37,11 @@ io.on('connection', (socket) => {
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+        
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
+        
         users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
+        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         socket.emit('status update', userStatus[socket.nick]);
         if (currentBackground !== "") socket.emit('background changed', currentBackground);
@@ -54,6 +57,7 @@ io.on('connection', (socket) => {
         if(data.state === 2) statusMsg = `🚫 [${data.target}] Engellendiniz!`;
         if(data.state === 0) statusMsg = `✅ [${data.target}] Sohbete devam edebilirsiniz.`;
 
+        // Özel mesajı sadece yöneticiye ve hedefe gönder
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target || users[id].role === 'Yönetici') {
                 io.to(id).emit('chat message', { 
@@ -81,16 +85,15 @@ io.on('connection', (socket) => {
                 text: parseEmojis(data.text), 
                 color: data.color || u.color, 
                 style: data.style,
-                isMuted: (userStatus[u.nick] === 1) // Susturulmuş mu bilgisi
+                isMuted: (userStatus[u.nick] === 1)
             };
 
             if (userStatus[u.nick] === 1) {
-                // Kendine göster
-                socket.emit('chat message', msgData);
-                // Yöneticilere göster (Özel etiketle)
+                socket.emit('chat message', msgData); // Kendine göster
                 Object.keys(users).forEach(id => { 
                     if (users[id].role === 'Yönetici' && id !== socket.id) {
-                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                        // Yöneticiye (Susturuldu) etiketiyle gönder
+                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" }); 
                     }
                 });
             } else {
