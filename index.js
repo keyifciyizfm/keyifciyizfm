@@ -18,7 +18,7 @@ let shutdownTimer = null;
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// EMOJİ ÇÖZÜCÜ
+// EMOJİ PARSER
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
@@ -70,8 +70,15 @@ io.on('connection', (socket) => {
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
+        
+        // SUSTURMA UYARISI BURADA
+        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
+        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
+                if(statusMsg !== "") {
+                    io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
+                }
                 users[id].status = data.state;
                 io.to(id).emit('status update', data.state);
             }
