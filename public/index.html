@@ -1,108 +1,192 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-let users = {}; 
-let userStatus = {}; // { 'Nick': DurumKodu } 0:Normal, 1:Susturuldu, 2:Engellendi
-const masterNick = "Keyifciyiz_Fm";
-const masterPass = "123456";
-
-// Emoji Çözücü - Güvenilir CDN Linkleri ile
-function parseEmojis(text) {
-    const emojiMap = {
-        ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
-        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
-        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
-    };
-    let newText = text;
-    for (const [code, id] of Object.entries(emojiMap)) {
-        const url = `https://cdn.jsdelivr.net/gh/jakejarvis/apple-emoji-svg@master/emoji/${id}.svg`;
-        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
-    }
-    return newText;
-}
-
-io.on('connection', (socket) => {
-    socket.on('join', (data) => {
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sohbet - Keyifciyiz FM</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         
-        socket.nick = data.nick || "Misafir";
-        socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
-        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 5px; width: 320px; }
         
-        if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        
+        /* ARAÇ ÇUBUĞU DÜZENİ */
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
+        .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
+        .tool-group:last-child { border-right: none; }
 
-        users[socket.id] = { 
-            id: socket.id, nick: socket.nick, role: socket.role, 
-            color: socket.color, status: userStatus[socket.nick] 
-        };
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; justify-content: center; min-width: 32px; }
+        .f-btn.active { background: #2ecc71; color: #000; font-weight: bold; }
+        .f-btn:hover { opacity: 0.9; border-color: #888; }
 
-        socket.emit('login success', { role: socket.role, nick: socket.nick });
-        socket.emit('status update', userStatus[socket.nick]);
-        io.emit('user list', Object.values(users));
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
+        
+        /* MESAJ ALANI VE ARKA PLAN */
+        #messages { 
+            flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; 
+            border-radius: 2px; font-size: 13px; color: #fff; position: relative;
+            background-size: cover; background-position: center;
+        }
+        /* Resim varken mesajların okunması için karartma katmanı */
+        .msg-content { position: relative; z-index: 2; margin-bottom: 8px; }
+        .bg-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1; display: none; pointer-events: none; }
+
+        #ban-overlay { display: none; position: absolute; top: 8px; left: 8px; width: calc(75% - 6px); height: calc(100% - 16px); background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
+
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
+        .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border-radius: 2px; }
+        .status-0 { background: #222; } .status-1 { background: #3498db; color:#fff; } .status-2 { background: #e74c3c; color:#fff; }
+
+        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #333; border: 2px solid #555; padding: 12px; flex-wrap: wrap; gap: 8px; width: 260px; border-radius: 5px; z-index: 200; box-shadow: 0 -5px 25px #000; }
+        .emoji-item { cursor: pointer; transition: 0.1s; padding: 4px; }
+        .emoji-item:hover { background: #444; border-radius: 4px; }
+        .emoji-item img { width: 24px; height: 24px; }
+
+        form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div id="login-overlay">
+    <div id="login-box">
+        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;"></div>
+        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px; font-weight:bold;" onclick="joinChat()">BAĞLAN</button>
+    </div>
+</div>
+
+<div id="chat-container">
+    <div id="top-gradient"></div>
+    <div id="action-bar">
+        <div class="tool-group">
+            <button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button>
+        </div>
+        <div class="tool-group">
+            <button class="f-btn" onclick="changeFontSize(2)">A+</button>
+            <button class="f-btn" onclick="changeFontSize(-2)">A-</button>
+        </div>
+        <div class="tool-group">
+            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>/</i></button>
+            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
+        </div>
+        <div class="tool-group">
+            <input type="color" id="colorPicker" value="#2ecc71" onchange="handleColorChange(this.value)" style="width:28px; height:22px; cursor:pointer; border:none; background:none;">
+        </div>
+        <div class="tool-group" id="admin-tools" style="display:none;">
+            <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
+            <button class="f-btn" style="color:#3498db;" onclick="changeBg()">🖼️ Resim</button>
+        </div>
+        <div style="flex: 1;"></div>
+        <button class="f-btn" style="margin-right:10px;" onclick="location.reload()">Çıkış</button>
+    </div>
+
+    <div id="main-area">
+        <div id="ban-overlay">
+            <h1 style="font-size:40px;">🚫</h1>
+            <h3>Engellendiniz!</h3>
+        </div>
+        <div id="messages">
+            <div class="bg-overlay" id="overlay"></div>
+        </div>
+        <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
+    </div>
+
+    <div id="emoji-panel"></div>
+
+    <form id="form" onsubmit="sendMessage(event)">
+        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+        <button type="submit" id="send-btn" class="f-btn">GÖNDER</button>
+    </form>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var socket = io();
+    var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
+    var styles = { bold: false, italic: false, underline: false };
+
+    // Emoji Paneli Oluşturma
+    const emojis = [
+        {c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'},
+        {c: ':fire:', i: '1f525'}, {c: ':rose:', i: '1f339'}, {c: ':thumbsup:', i: '1f44d'}, {c: ':microphone:', i: '1f399'},
+        {c: ':wink:', i: '1f609'}, {c: ':star:', i: '2b50'}, {c: ':coffee:', i: '2615'}, {c: ':musical_note:', i: '1f3b5'}
+    ];
+    const panel = document.getElementById('emoji-panel');
+    emojis.forEach(e => {
+        let d = document.createElement('div'); d.className = 'emoji-item';
+        d.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/jakejarvis/apple-emoji-svg@master/emoji/${e.i}.svg">`;
+        d.onclick = () => { document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
+        panel.appendChild(d);
     });
 
-    socket.on('update status', (data) => {
-        if (socket.role !== 'Yönetici') return;
-        userStatus[data.target] = data.state;
-        Object.keys(users).forEach(id => {
-            if (users[id].nick === data.target) {
-                users[id].status = data.state;
-                io.to(id).emit('status update', data.state);
+    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === masterNick) ? "block" : "none"; }
+    function joinChat() { const n = document.getElementById('nick-input').value, p = document.getElementById('pass-input').value; if(n) socket.emit('join', { nick: n, password: p }); }
+    
+    socket.on('login success', d => { 
+        myNick = d.nick; myRole = d.role; 
+        document.getElementById('login-overlay').style.display = 'none'; 
+        if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex';
+        socket.emit('update color', selectedColor);
+    });
+
+    socket.on('status update', s => {
+        myStatus = s;
+        document.getElementById('ban-overlay').style.display = (s === 2) ? 'flex' : 'none';
+        document.getElementById('input').disabled = (s === 2);
+    });
+
+    socket.on('chat cleared', () => { 
+        const m = document.getElementById('messages');
+        m.querySelectorAll('.msg-content').forEach(e => e.remove());
+    });
+
+    socket.on('background changed', url => {
+        const m = document.getElementById('messages');
+        m.style.backgroundImage = `url('${url}')`;
+        document.getElementById('overlay').style.display = 'block';
+    });
+
+    socket.on('chat message', d => {
+        if ((d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) || myStatus === 2) return;
+        const div = document.createElement('div');
+        div.className = "msg-content";
+        const s = d.style || {};
+        div.innerHTML = `<b style="color:${d.color}">${d.user}:</b> <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">${d.text}</span>`;
+        document.getElementById('messages').appendChild(div);
+        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+
+    socket.on('user list', list => {
+        const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
+        list.forEach(u => {
+            const i = document.createElement('div'); i.className = 'user-item';
+            const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
+            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
+            if (myRole === 'Yönetici' && u.nick !== myNick) {
+                box.style.cursor = "pointer";
+                box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
             }
+            i.appendChild(box);
+            const n = document.createElement('span'); n.style.color = u.color; n.style.fontWeight = "bold"; n.innerText = u.nick; i.appendChild(n);
+            uDiv.appendChild(i);
         });
-        io.emit('user list', Object.values(users));
     });
 
-    socket.on('update color', (newColor) => {
-        if (users[socket.id]) {
-            users[socket.id].color = newColor;
-            io.emit('user list', Object.values(users));
-        }
-    });
-
-    socket.on('clear chat', () => {
-        if (socket.role === 'Yönetici') io.emit('chat cleared');
-    });
-
-    socket.on('change background', (url) => {
-        if (socket.role === 'Yönetici') io.emit('background changed', url);
-    });
-
-    socket.on('chat message', (data) => {
-        if (users[socket.id]) {
-            const u = users[socket.id];
-            if (userStatus[u.nick] === 2) return;
-
-            const msgData = { 
-                user: u.nick, 
-                text: parseEmojis(data.text), 
-                color: data.color || u.color, 
-                style: data.style 
-            };
-
-            if (userStatus[u.nick] === 1) {
-                msgData.isMuted = true;
-                socket.emit('chat message', msgData);
-                Object.keys(users).forEach(id => {
-                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', msgData);
-                });
-            } else {
-                io.emit('chat message', msgData);
-            }
-        }
-    });
-
-    socket.on('disconnect', () => {
-        if (users[socket.id]) { delete users[socket.id]; io.emit('user list', Object.values(users)); }
-    });
-});
-
-server.listen(process.env.PORT || 3000);
+    function clearChat() { if(confirm("Tüm mesajlar silinsin mi?")) socket.emit('clear chat'); }
+    function changeBg() { const u = prompt("Resim URL:"); if(u) socket.emit('change background', u); }
+    function handleColorChange(c) { selectedColor = c; document.getElementById('input').style.color = c; socket.emit('update color', c); }
+    function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
+    function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
+    function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; }
+    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value && myStatus !== 2) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
+    document.addEventListener('click', () => document.getElementById('emoji-panel').style.display = 'none');
+</script>
+</body>
+</html>
