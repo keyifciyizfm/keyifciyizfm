@@ -16,13 +16,11 @@ let isAdminOnline = false;
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// GERÇEKÇİ EMOJİ DÖNÜŞTÜRÜCÜ
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
-        ":cool:": "1f60e", ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d",
-        ":clap:": "1f44f", ":microphone:": "1f399", ":coffee:": "2615", ":musical_note:": "1f3b5",
-        ":wink:": "1f609", ":star:": "2b50", ":laughing:": "1f606", ":sunglasses:": "1f60e"
+        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
+        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
     };
     let newText = text;
     for (const [code, id] of Object.entries(emojiMap)) {
@@ -56,7 +54,6 @@ io.on('connection', (socket) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
         let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
-        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
                 if(statusMsg !== "") io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
@@ -72,24 +69,18 @@ io.on('connection', (socket) => {
             const u = users[socket.id];
             if (userStatus[u.nick] === 2) return;
             const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style, isMuted: (userStatus[u.nick] === 1) };
-            
             if (userStatus[u.nick] === 1) {
-                socket.emit('chat message', msgData); // Kendine gönder
+                socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
-                    if (users[id].role === 'Yönetici' && id !== socket.id) {
-                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" }); // Sadece yöneticiye gönder
-                    }
+                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
                 });
-            } else {
-                io.emit('chat message', msgData); // Herkese gönder
-            }
+            } else { io.emit('chat message', msgData); }
         }
     });
 
     socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
     socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
     socket.on('update color', (newColor) => { if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); } });
-    
     socket.on('disconnect', () => {
         if (users[socket.id]) {
             if (users[socket.id].nick === masterNick) { isAdminOnline = false; io.emit('force logout'); users = {}; } 
@@ -98,5 +89,4 @@ io.on('connection', (socket) => {
         }
     });
 });
-
 server.listen(process.env.PORT || 3000);
