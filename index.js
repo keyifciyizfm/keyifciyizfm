@@ -33,23 +33,15 @@ function parseEmojis(text) {
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
-
-        if (!isAdminOnline && !isTargetAdmin) {
-            return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
-        }
-
-        if (isTargetAdmin && data.password !== masterPass) {
-            return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
-        }
-
+        if (!isAdminOnline && !isTargetAdmin) return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
+        if (isTargetAdmin && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
+        
         if (isTargetAdmin) isAdminOnline = true;
-
         socket.nick = data.nick || "Misafir";
         socket.role = isTargetAdmin ? 'Yönetici' : 'Dinleyici';
-        socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+        socket.color = isTargetAdmin ? '#ff4757' : '#2ecc71';
         
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
-        
         users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
         
         socket.emit('login success', { role: socket.role, nick: socket.nick });
@@ -61,16 +53,11 @@ io.on('connection', (socket) => {
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
-        
-        let statusMsg = "";
-        if(data.state === 1) statusMsg = `🔇 [${data.target}] Susturuldunuz!`;
-        if(data.state === 0) statusMsg = `✅ [${data.target}] Sohbete devam edebilirsiniz.`;
+        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
 
         Object.keys(users).forEach(id => {
-            if (users[id].nick === data.target || users[id].role === 'Yönetici') {
-                io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
-            }
             if (users[id].nick === data.target) {
+                if(statusMsg !== "") io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
                 users[id].status = data.state;
                 io.to(id).emit('status update', data.state);
             }
@@ -82,27 +69,22 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             const u = users[socket.id];
             if (userStatus[u.nick] === 2) return;
-            
-            const msgData = { 
-                user: u.nick, text: parseEmojis(data.text), 
-                color: data.color || u.color, style: data.style,
-                isMuted: (userStatus[u.nick] === 1)
-            };
+            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style, isMuted: (userStatus[u.nick] === 1) };
 
             if (userStatus[u.nick] === 1) {
                 socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
-                    if (users[id].role === 'Yönetici' && id !== socket.id) {
-                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
-                    }
+                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
                 });
-            } else {
-                io.emit('chat message', msgData);
-            }
+            } else { io.emit('chat message', msgData); }
         }
     });
 
-    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
+    // TEMİZLEME KOMUTU
+    socket.on('clear chat', () => { 
+        if (socket.role === 'Yönetici') io.emit('chat cleared'); 
+    });
+
     socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
     socket.on('update color', (newColor) => { if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); } });
 
@@ -112,9 +94,7 @@ io.on('connection', (socket) => {
                 isAdminOnline = false;
                 io.emit('force logout', 'Yayın sona erdi, oda kapatıldı!');
                 users = {}; 
-            } else {
-                delete users[socket.id];
-            }
+            } else { delete users[socket.id]; }
             io.emit('user list', Object.values(users));
         }
     });
