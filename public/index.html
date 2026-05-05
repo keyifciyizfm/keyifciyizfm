@@ -14,36 +14,45 @@
         /* ANA PANEL */
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; position: relative; z-index: 10; }
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; position: relative; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
         
         /* BUTONLAR */
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; }
-        .f-btn:hover { background: #555; }
         .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
         
         /* MESAJ ALANI */
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; position: relative; background-size: cover; background-position: center; }
-        .bg-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1; display: none; pointer-events: none; }
         .msg-content { position: relative; z-index: 2; margin-bottom: 8px; line-height: 1.4; }
         
-        /* EMOJİ PANELİ (GÜNCELLENDİ) */
+        /* KULLANICI LİSTESİ */
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
+        .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border-radius: 2px; flex-shrink: 0; }
+        .status-0 { background: #222; } 
+        .status-1 { background: #3498db; color: #fff; } 
+        .status-2 { background: #e74c3c; color: #fff; }
+        
+        /* EMOJİ PANELİ */
         #emoji-panel { 
             display: none; position: absolute; bottom: 65px; left: 12px; 
             background: #2a2a2a; border: 2px solid #555; padding: 10px; 
             flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; 
             box-shadow: 0 -5px 25px #000; border-radius: 5px;
         }
-        .emoji-item { cursor: pointer; transition: transform 0.2s; padding: 2px; }
-        .emoji-item:hover { transform: scale(1.3); background: #444; border-radius: 5px; }
+        .emoji-item { cursor: pointer; transition: transform 0.2s; }
+        .emoji-item:hover { transform: scale(1.2); }
 
-        /* DİĞERLERİ */
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
+        /* FORM */
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; position: relative; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; border-radius: 3px; }
-        .clear-info { text-align: center; color: #f1c40f; font-style: italic; border-bottom: 1px dashed #444; padding-bottom: 10px; margin-bottom: 15px; font-size: 12px; }
-        #ban-overlay { display: none; position: absolute; top: 8px; left: 8px; width: calc(75% - 6px); height: calc(100% - 16px); background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
+        
+        /* TEMİZLEME MESAJI */
+        .clear-info { text-align: center; color: #f1c40f; font-style: italic; border-bottom: 1px dashed #444; padding-bottom: 10px; margin-bottom: 15px; font-size: 12px; width: 100%; }
+        
+        /* ENGEL EKRANI */
+        #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; text-align: center; }
     </style>
 </head>
 <body>
@@ -81,8 +90,8 @@
     </div>
 
     <div id="main-area">
-        <div id="ban-overlay"><h1 id="ban-icon">🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
-        <div id="messages"><div class="bg-overlay" id="overlay"></div></div>
+        <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text" style="margin-top:10px;">Yayın Sona Erdi!</h3></div>
+        <div id="messages"></div>
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
 
@@ -100,108 +109,86 @@
     var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false };
 
-    // GERÇEKÇİ EMOJİ LİSTESİ (NOTO EMOJI)
+    // EMOJİ AYARLARI
     const emojis = [
-        {c: ':smile:', id: '1f604'}, {c: ':joy:', id: '1f602'}, {c: ':kiss:', id: '1f618'}, {c: ':heart:', id: '2764'},
-        {c: ':cool:', id: '1f60e'}, {c: ':fire:', id: '1f525'}, {c: ':rose:', id: '1f339'}, {c: ':thumbsup:', id: '1f44d'},
-        {c: ':clap:', id: '1f44f'}, {c: ':microphone:', id: '1f399'}, {c: ':coffee:', id: '2615'}, {c: ':musical_note:', id: '1f3b5'},
-        {c: ':wink:', id: '1f609'}, {c: ':star:', id: '2b50'}, {c: ':laughing:', id: '1f606'}, {c: ':sunglasses:', id: '1f60e'}
+        {c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},
+        {c:':cool:',id:'1f60e'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},
+        {c:':clap:',id:'1f44f'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},
+        {c:':wink:',id:'1f609'},{c:':star:',id:'2b50'},{c:':laughing:',id:'1f606'},{c:':sunglasses:',id:'1f60e'}
     ];
-
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
-        let d = document.createElement('div');
-        d.className = 'emoji-item';
-        d.innerHTML = `<img src="https://fonts.gstatic.com/s/e/notoemoji/latest/${e.id}/512.webp" style="width:32px; height:32px;">`;
-        d.onclick = (ev) => {
-            ev.stopPropagation();
-            document.getElementById('input').value += e.c + ' ';
-            document.getElementById('input').focus();
-        };
+        let d = document.createElement('div'); d.className = 'emoji-item';
+        d.innerHTML = `<img src="https://fonts.gstatic.com/s/e/notoemoji/latest/${e.id}/512.webp" style="width:30px;height:30px;">`;
+        d.onclick = (ev) => { ev.stopPropagation(); document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
         panel.appendChild(d);
     });
 
-    function toggleEmojiPanel(e) {
-        e.stopPropagation();
-        const p = document.getElementById('emoji-panel');
-        const isVisible = p.style.display === 'flex';
-        p.style.display = isVisible ? 'none' : 'flex';
-    }
+    function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
+    document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
 
-    // Dışarı tıklandığında paneli kapat
-    document.addEventListener('click', function(e) {
-        const p = document.getElementById('emoji-panel');
-        if (!p.contains(e.target) && e.target.id !== 'emoji-trigger') {
-            p.style.display = 'none';
-        }
-    });
-
-    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v.trim() === "Keyifciyiz_Fm") ? "block" : "none"; }
+    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
     function joinChat() {
         const n = document.getElementById('nick-input').value.trim();
         const p = document.getElementById('pass-input').value.trim();
-        if(!n) return;
-        socket.emit('join', { nick: n, password: p });
+        if(n) socket.emit('join', { nick: n, password: p });
     }
 
     socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
-    socket.on('login success', d => { 
-        myNick = d.nick; myRole = d.role; 
-        document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex';
-    });
+    socket.on('login success', d => { myNick = d.nick; myRole = d.role; document.getElementById('login-overlay').style.display = 'none'; if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex'; });
 
     socket.on('chat cleared', () => {
         const m = document.getElementById('messages');
-        m.innerHTML = '<div class="bg-overlay" id="overlay" style="display:block"></div>';
-        const info = document.createElement('div');
-        info.className = 'clear-info';
-        info.innerHTML = '✨ Sohbet yönetici tarafından temizlendi ✨';
-        m.appendChild(info);
+        m.innerHTML = '<div class="clear-info">✨ Sohbet yönetici tarafından temizlendi ✨</div>';
     });
 
     socket.on('chat message', d => {
         if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.className = "msg-content";
-        let nickHTML = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user.includes("(Susturuldu)")) nickHTML = `<b style="color:#777;">${d.user}:</b>`;
-        div.innerHTML = `${nickHTML} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'};">${d.text}</span>`;
+        let nickPrefix = `<b style="color:${d.color}">${d.user}:</b>`;
+        if(d.user.includes("(Susturuldu)")) nickPrefix = `<b style="color:#777;">${d.user}:</b>`;
+        div.innerHTML = `${nickPrefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
     socket.on('status update', s => {
         myStatus = s;
-        const overlay = document.getElementById('ban-overlay');
-        if(s === 2) { overlay.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } 
-        else { overlay.style.display = 'none'; }
+        const o = document.getElementById('ban-overlay');
+        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
     });
 
-    socket.on('force logout', m => {
+    socket.on('force logout', () => {
         document.getElementById('ban-overlay').style.display = 'flex';
-        document.getElementById('ban-text').innerText = "YAYIN SONA ERDI!";
+        document.getElementById('ban-text').innerText = "YAYIN SONA ERDİ!";
         setTimeout(() => location.reload(), 3000);
     });
 
     socket.on('user list', list => {
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         list.forEach(u => {
-            const i = document.createElement('div'); i.className = 'user-item';
-            const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
-            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
+            const item = document.createElement('div'); item.className = 'user-item';
+            const box = document.createElement('div');
+            box.className = `status-box status-${u.status || 0}`;
+            if(u.status === 1) box.innerText = "/";
+            if(u.status === 2) box.innerText = "-";
             if (myRole === 'Yönetici' && u.nick !== myNick) {
                 box.style.cursor = "pointer";
                 box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
             }
-            i.appendChild(box);
-            i.innerHTML += `<span style="color:${u.color}; font-weight:bold;">${u.nick}</span>`;
-            uDiv.appendChild(i);
+            const nameSpan = document.createElement('span');
+            nameSpan.style.color = u.color;
+            nameSpan.style.fontWeight = "bold";
+            nameSpan.innerText = u.nick;
+            item.appendChild(box);
+            item.appendChild(nameSpan);
+            uDiv.appendChild(item);
         });
     });
 
     socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
-    function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = function(e) { socket.emit('change background', e.target.result); }; reader.readAsDataURL(input.files[0]); } }
-    function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
+    function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
+    function clearChat() { if(confirm("Tüm mesajlar temizlensin mi?")) socket.emit('clear chat'); }
     function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
