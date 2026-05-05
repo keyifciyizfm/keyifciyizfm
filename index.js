@@ -67,25 +67,6 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    socket.on('update status', (data) => {
-        if (socket.role !== 'Yönetici') return;
-        userStatus[data.target] = data.state;
-        
-        // SUSTURMA UYARISI BURADA
-        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
-        
-        Object.keys(users).forEach(id => {
-            if (users[id].nick === data.target) {
-                if(statusMsg !== "") {
-                    io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
-                }
-                users[id].status = data.state;
-                io.to(id).emit('status update', data.state);
-            }
-        });
-        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
-    });
-
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
@@ -100,15 +81,23 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('update status', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        userStatus[data.target] = data.state;
+        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
+        Object.keys(users).forEach(id => {
+            if (users[id].nick === data.target) {
+                if(statusMsg !== "") io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
+                users[id].status = data.state;
+                io.to(id).emit('status update', data.state);
+            }
+        });
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+    });
+
     socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
     socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
-    
-    socket.on('update color', (newColor) => { 
-        if (users[socket.id]) { 
-            users[socket.id].color = newColor; 
-            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) }); 
-        } 
-    });
+    socket.on('update color', (newColor) => { if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) }); } });
     
     socket.on('disconnect', () => {
         if (users[socket.id]) {
@@ -116,12 +105,8 @@ io.on('connection', (socket) => {
                 adminCount--;
                 if (adminCount <= 0) {
                     adminCount = 0;
-                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı değişikliği yapılıyor, oda 60 saniye içinde devredilecek...", color: "#f1c40f" });
-                    shutdownTimer = setTimeout(() => {
-                        io.emit('force logout'); 
-                        users = {};
-                        adminCount = 0;
-                    }, 60000); 
+                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı değişikliği yapılıyor...", color: "#f1c40f" });
+                    shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000); 
                 }
             }
             delete users[socket.id];
@@ -130,4 +115,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+server.listen(process.env.PORT || 3000, () => console.log("Sunucu 3000 portunda aktif."));
