@@ -61,29 +61,39 @@
         }
     });
 
-    // --- DİNLEYİCİ SİSTEMİ (MEDIASOURCE - EN STABİL YÖNTEM) ---
-    function setupReceiver() {
-        mediaSource = new MediaSource();
-        const audio = document.getElementById('receiver');
-        audio.src = URL.createObjectURL(mediaSource);
-
-        mediaSource.addEventListener('sourceopen', () => {
-            sourceBuffer = mediaSource.addSourceBuffer('audio/webm; codecs="opus"');
-            sourceBuffer.addEventListener('updateend', () => {
-                if (queue.length > 0 && !sourceBuffer.updating) {
-                    sourceBuffer.appendBuffer(queue.shift());
-                }
-            });
-        });
-    }
-
-    socket.on('audio-stream', async (data) => {
-        if (sourceBuffer && !sourceBuffer.updating) {
-            sourceBuffer.appendBuffer(data);
-        } else {
-            queue.push(data);
+    // DİNLEYİCİ TARAFI
+    socket.on('playStream', (payload) => {
+        if(payload.type === 'music') {
+            player.src = payload.data;
+            player.play();
         }
     });
+
+    socket.on('killStream', () => { player.pause(); player.src = ""; });
+
+    player.onended = () => { if(isDJ()) play(currentIdx + 1); };
+    function isDJ() { return document.getElementById('pro-mixer').style.display === 'block'; }
+
+    // CHAT
+    function send() {
+        const i = document.getElementById('mi');
+        if(i.value) { socket.emit('sendMessage', { user: document.getElementById('un').value, text: i.value }); i.value = ''; }
+    }
+
+    socket.on('message', (m) => {
+        document.getElementById('messages').innerHTML += `
+            <div class="msg-box">
+                <span class="nick">${m.user}</span>
+                <div class="text">${m.text}</div>
+            </div>`;
+        document.getElementById('messages').scrollTop = 999999;
+    });
+
+    function stopRadyo() { socket.emit('stopStream'); }
+    function clearAll() { musicList = []; document.getElementById('playlist').innerHTML = ''; stopRadyo(); }
+</script>
+</body>
+</html>
 
     // --- DJ MİKSER SİSTEMİ ---
     function initDJ(input) {
