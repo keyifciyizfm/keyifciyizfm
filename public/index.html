@@ -6,23 +6,33 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        
+        /* GİRİŞ EKRANI STİLİ (Görüntüdeki gibi) */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
+        #login-box { background: linear-gradient(180deg, #444, #222); padding: 30px; border: 1px solid #777; text-align: center; border-radius: 12px; width: 350px; box-shadow: 0 0 30px #000; }
+        #nick-input, #pass-input { padding: 12px; margin-bottom: 12px; display: block; width: 100%; background: #222; color: #fff; border: 1px solid #555; outline: none; border-radius: 4px; }
+        
+        /* ANA PANEL */
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; position: relative; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 10px; font-size: 11px; cursor: pointer; border-radius: 3px; }
+        
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
         .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
+        
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; position: relative; background-size: cover; background-position: center; }
         .msg-content { position: relative; z-index: 2; margin-bottom: 8px; line-height: 1.4; }
+        
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border-radius: 2px; flex-shrink: 0; }
         .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
+        
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; box-shadow: 0 -5px 25px #000; border-radius: 5px; }
         .emoji-item { cursor: pointer; transition: transform 0.2s; }
+        
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; position: relative; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; border-radius: 3px; }
         .clear-info { text-align: center; color: #f1c40f; font-style: italic; border-bottom: 1px dashed #444; padding-bottom: 10px; margin-bottom: 15px; font-size: 12px; }
@@ -33,10 +43,11 @@
 
 <div id="login-overlay">
     <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;"></div>
-        <button class="f-btn" style="margin: 0 auto; padding: 10px 30px; font-weight:bold;" onclick="joinChat()">BAĞLAN</button>
+        <h2 style="color:#fff; margin-bottom:20px; font-weight:normal;">Keyifciyiz FM</h2>
+        <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Yönetici Şifresi..."></div>
+        <button class="f-btn" style="padding:10px 40px; font-weight:bold; font-size:14px;" onclick="joinChat()">BAĞLAN</button>
+        <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:15px; display:none;"></p>
     </div>
 </div>
 
@@ -83,7 +94,6 @@
     var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
-    // Emoji Panel
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':cool:',id:'1f60e'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':wink:',id:'1f609'}];
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
@@ -102,6 +112,13 @@
         const p = document.getElementById('pass-input').value.trim();
         if(n) socket.emit('join', { nick: n, password: p });
     }
+
+    // HATA MESAJI BURADA YAZDIRILIYOR
+    socket.on('auth error', m => { 
+        const e = document.getElementById('error-msg'); 
+        e.innerText = m; 
+        e.style.display = "block"; 
+    });
 
     socket.on('login success', d => { myNick = d.nick; myRole = d.role; document.getElementById('login-overlay').style.display = 'none'; if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex'; });
 
