@@ -12,6 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let users = {}; 
 let userStatus = {}; 
 let currentBackground = ""; 
+let isAdminOnline = false; // YÖNETİCİ KONTROLÜ
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
@@ -31,11 +32,21 @@ function parseEmojis(text) {
 
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
-        if (data.nick === masterNick && data.password !== masterPass) {
+        const isTargetAdmin = (data.nick === masterNick);
+
+        // KONTROL: Yönetici yoksa girişi engelle
+        if (!isAdminOnline && !isTargetAdmin) {
+            return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
+        }
+
+        if (isTargetAdmin && data.password !== masterPass) {
             return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
         }
+
+        if (isTargetAdmin) isAdminOnline = true;
+
         socket.nick = data.nick || "Misafir";
-        socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
+        socket.role = isTargetAdmin ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
         
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
@@ -60,10 +71,7 @@ io.on('connection', (socket) => {
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target || users[id].role === 'Yönetici') {
                 io.to(id).emit('chat message', { 
-                    user: "BİLGİ", 
-                    text: statusMsg, 
-                    color: "#f1c40f", 
-                    style: { bold: true, italic: true } 
+                    user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } 
                 });
             }
             if (users[id].nick === data.target) {
@@ -80,18 +88,16 @@ io.on('connection', (socket) => {
             if (userStatus[u.nick] === 2) return;
             
             const msgData = { 
-                user: u.nick, 
-                text: parseEmojis(data.text), 
-                color: data.color || u.color, 
-                style: data.style,
+                user: u.nick, text: parseEmojis(data.text), 
+                color: data.color || u.color, style: data.style,
                 isMuted: (userStatus[u.nick] === 1)
             };
 
             if (userStatus[u.nick] === 1) {
-                socket.emit('chat message', msgData);
+                socket.emit('chat message', msgData); // Kendine göster
                 Object.keys(users).forEach(id => { 
                     if (users[id].role === 'Yönetici' && id !== socket.id) {
-                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" }); 
+                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
                     }
                 });
             } else {
@@ -101,21 +107,23 @@ io.on('connection', (socket) => {
     });
 
     socket.on('clear chat', () => {
-        if (socket.role === 'Yönetici') {
-            io.emit('chat cleared'); // Herkese temizleme emri gönder
-        }
+        if (socket.role === 'Yönetici') io.emit('chat cleared');
     });
 
     socket.on('change background', (url) => { 
         if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); }
     });
-    
+
     socket.on('update color', (newColor) => {
         if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); }
     });
 
     socket.on('disconnect', () => {
-        if (users[socket.id]) { delete users[socket.id]; io.emit('user list', Object.values(users)); }
+        if (users[socket.id]) {
+            if (users[socket.id].nick === masterNick) isAdminOnline = false;
+            delete users[socket.id];
+            io.emit('user list', Object.values(users));
+        }
     });
 });
 
