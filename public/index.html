@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Sohbet - Keyifciyiz FM</title>
+    <title>Keyifciyiz FM - Canlı Sohbet</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
@@ -68,7 +68,7 @@
     </div>
 
     <div id="main-area">
-        <div id="ban-overlay"><h1>🚫</h1><h3>Engellendiniz!</h3></div>
+        <div id="ban-overlay"><h1>🚫</h1><h3>Yayın Sona Erdi!</h3></div>
         <div id="messages"><div class="bg-overlay" id="overlay"></div></div>
         <div id="user-list"><b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:10px 0; border:#333 1px solid;"><div id="users"></div></div>
     </div>
@@ -85,6 +85,7 @@
     var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
+    // Emoji Listesi
     const emojis = [
         {c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'},
         {c: ':fire:', i: '1f525'}, {c: ':rose:', i: '1f339'}, {c: ':thumbsup:', i: '1f44d'}, {c: ':microphone:', i: '1f399'},
@@ -123,7 +124,13 @@
         document.getElementById('input').disabled = (s === 2);
     });
 
-    // TEMİZLEME FONKSİYONU
+    // ZORUNLU ÇIKIŞ (Yönetici Çıkınca)
+    socket.on('force logout', m => {
+        alert(m);
+        location.reload();
+    });
+
+    // TEMİZLEME
     socket.on('chat cleared', () => {
         const m = document.getElementById('messages');
         const o = document.getElementById('overlay');
@@ -140,6 +147,7 @@
         const div = document.createElement('div'); div.className = "msg-content";
         const s = d.style || {};
         let nickHTML = `<b style="color:${d.color}">${d.user}:</b>`;
+        // Yöneticiye susturulanları gri göster
         if(d.user.includes("(Susturuldu)")) nickHTML = `<b style="color:#777;">${d.user}:</b>`;
 
         div.innerHTML = `${nickHTML} <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">${d.text}</span>`;
@@ -170,12 +178,12 @@
             reader.readAsDataURL(input.files[0]);
         }
     }
-    function clearChat() { if(confirm("Tüm mesajlar silinsin mi?")) socket.emit('clear chat'); }
+    function clearChat() { if(confirm("Sohbeti temizle?")) socket.emit('clear chat'); }
     function handleColorChange(c) { selectedColor = c; document.getElementById('input').style.color = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; }
-    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value && myStatus !== 2) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
+    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
     document.addEventListener('click', () => document.getElementById('emoji-panel').style.display = 'none');
 </script>
 </body>
