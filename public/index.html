@@ -2,281 +2,166 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Canlı Sohbet & Radyo</title>
+    <title>Keyifciyiz FM - Kararlı Yayın</title>
     <style>
+        /* SİZİN ORİJİNAL STİLLERİNİZ */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        
-        /* Kilit Açma Ekranı */
-        #unlock-shield { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .unlock-btn { background: #2ecc71; color: #000; padding: 20px 40px; border-radius: 50px; font-weight: bold; font-size: 18px; box-shadow: 0 0 30px rgba(46, 204, 113, 0.4); animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        
-        #chat-container { width: 950px; height: 650px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; }
         
-        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
-        .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
-        .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
-        
-        /* Radyo Barı */
-        #radio-bar { background: #222; padding: 8px 15px; border-bottom: 2px solid #111; display: flex; align-items: center; justify-content: space-between; }
-        #status-led { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: bold; }
-        .dot { width: 10px; height: 10px; background: #555; border-radius: 50%; }
-        .dot.live { background: #ff4757; box-shadow: 0 0 10px #ff4757; animation: blink 1.5s infinite; }
-        @keyframes blink { 50% { opacity: 0.4; } }
-
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; }
-        
-        .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
-        .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
-        .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
-        
-        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
-        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
-        #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
+        /* EK RADYO STİLLERİ */
+        #radio-panel { background: #222; padding: 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #000; }
+        .f-btn { background: #444; color: #fff; border: 1px solid #111; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
+        .f-btn:hover { background: #555; }
+        .live-pulse { width: 10px; height: 10px; background: #ff4757; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px #ff4757; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.3; } }
     </style>
 </head>
 <body>
 
-<div id="unlock-shield" onclick="unlockAudioEngine()">
-    <div class="unlock-btn">🎧 RADYOYU AKTİF ET VE GİRİŞ YAP</div>
-    <p style="margin-top:20px; color:#888; font-size:12px;">Chrome autoplay engeli için bir kez tıklamanız gerekmektedir.</p>
-</div>
-
-<div id="login-overlay" style="display:none;">
+<div id="login-overlay">
     <div id="login-box">
         <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
-        <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..."></div>
-        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px;">BAĞLAN</button>
-        <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:10px; display:none;"></p>
+        <p style="color:#888; font-size:11px; margin-bottom:15px;">Sesi duymak için giriş yapmalısınız.</p>
+        <input type="text" id="nick-input" placeholder="Nickiniz...">
+        <div id="pass-area"><input type="password" id="pass-input" placeholder="Şifre..."></div>
+        <button class="f-btn" onclick="startApp()" style="padding:10px 40px; background:#2ecc71; color:#000; font-weight:bold;">SİSTEME GİRİŞ YAP</button>
     </div>
 </div>
 
 <div id="chat-container">
     <div id="top-gradient"></div>
     
-    <div id="radio-bar">
-        <div id="status-led">
-            <div id="status-dot" class="dot"></div>
-            <span id="status-txt">YAYIN YOK</span>
+    <div id="radio-panel">
+        <div>
+            <span id="live-dot" style="display:none;" class="live-pulse"></span>
+            <span id="status-text" style="font-size:11px; margin-left:5px;">YAYIN BEKLENİYOR...</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <span style="font-size: 10px; color: #888;">VOL:</span>
-            <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="0.5" style="width: 80px; height: 3px; cursor: pointer;">
-            <div id="admin-radio-panel" style="display:none; align-items: center; gap: 10px; border-left: 1px solid #444; padding-left: 15px;">
-                <label style="font-size:10px; color:#2ecc71;"><input type="checkbox" id="mic-check"> MİK</label>
-                <button class="f-btn" onclick="document.getElementById('music-up').click()">MÜZİK SEÇ</button>
-                <input type="file" id="music-up" multiple accept="audio/*" style="display:none" onchange="listMusic(this)">
-                <select id="music-list" style="background:#111; color:#fff; border:1px solid #444; font-size:10px; width:100px;"></select>
-                <button id="live-btn" class="f-btn" style="background:#e74c3c" onclick="toggleLive()">🔴 BAŞLAT</button>
-            </div>
+        <div id="admin-controls" style="display:none; display:flex; gap:10px;">
+            <input type="file" id="music-file" accept="audio/*" style="font-size:10px;">
+            <button class="f-btn" onclick="toggleBroadcast()" id="broad-btn">🔴 YAYINI BAŞLAT</button>
+        </div>
+        <div>
+            <span style="font-size:10px;">SES:</span>
+            <input type="range" id="vol-control" min="0" max="1" step="0.1" value="0.5">
         </div>
     </div>
 
-    <div id="action-bar">
-        <div class="tool-group"><button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button></div>
-        <div class="tool-group"><button class="f-btn" onclick="changeFontSize(2)">A+</button><button class="f-btn" onclick="changeFontSize(-2)">A-</button></div>
-        <div class="tool-group">
-            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>B</b></button>
-            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
-        </div>
-        <div class="tool-group"><input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;"></div>
-        <div class="tool-group" id="admin-tools" style="display:none;">
-            <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
-            <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Resim</button>
-            <input type="file" id="bg-upload" style="display:none;" onchange="uploadBg(this)">
-        </div>
-        <div style="flex:1;"></div>
-        <button class="f-btn" onclick="location.reload()">Çıkış</button>
-    </div>
-
-    <div id="main-area">
-        <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
+    <div style="display:flex; flex:1; overflow:hidden; padding:8px; gap:8px; background:#222;">
         <div id="messages"></div>
         <div id="user-list">
-            <div id="fixed-admin">
-                <div style="font-size:9px; color:#666; margin-bottom:4px; text-transform:uppercase;">Şu An Yayında</div>
-                <div id="admin-display-name" style="font-weight: bold; font-size: 15px;">Keyifciyiz_Fm</div>
+            <div id="fixed-admin" style="text-align:center; padding:10px; background:#1a1a1a; margin-bottom:10px; border-radius:4px;">
+                <small style="color:#666;">YAYINCI</small><br>
+                <b id="admin-name">Keyifciyiz_Fm</b>
             </div>
-            <b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:8px 0; border:#333 1px solid;">
             <div id="users"></div>
         </div>
     </div>
 
-    <div id="emoji-panel"></div>
-
-    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
-        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+    <form id="form" onsubmit="sendMsg(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
+        <input id="input" autocomplete="off" placeholder="Mesajınız..." style="flex:1; background:#000; color:#fff; border:1px solid #555; padding:8px;" />
         <button type="submit" class="f-btn">GÖNDER</button>
     </form>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-    var socket = io();
-    var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
-    var styles = { bold: false, italic: false, underline: false };
-    
-    // --- SES MOTORU DEĞİŞKENLERİ ---
-    let audioCtx, gainNode, nextTime = 0, isLiveBroadcasting = false;
+    const socket = io();
+    let audioCtx, gainNode, isLive = false, myRole = "";
 
-    function unlockAudioEngine() {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive', sampleRate: 44100 });
+    // 1. UYGULAMAYI VE SESİ BAŞLAT (TEK TIKLA ÇÖZÜM)
+    function startApp() {
+        const nick = document.getElementById('nick-input').value;
+        const pass = document.getElementById('pass-input').value;
+        if(!nick) return alert("Nick gir!");
+
+        // Ses Kilidini Aç
+        window.AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
         gainNode = audioCtx.createGain();
         gainNode.connect(audioCtx.destination);
-        gainNode.gain.value = 0.5;
-
-        // Dummy sound to unlock
-        const buffer = audioCtx.createBuffer(1, 1, 22050);
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        source.start(0);
-
-        document.getElementById('unlock-shield').style.display = 'none';
-        document.getElementById('login-overlay').style.display = 'flex';
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
-    // Emoji, Style, Chat Fonksiyonları (Orijinal Kodun)
-    const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
-    const panel = document.getElementById('emoji-panel');
-    emojis.forEach(e => {
-        let d = document.createElement('div');
-        d.innerHTML = `<img src="https://fonts.gstatic.com/s/e/notoemoji/latest/${e.id}/512.webp" style="width:30px;height:30px;cursor:pointer;">`;
-        d.onclick = (ev) => { ev.stopPropagation(); document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
-        panel.appendChild(d);
-    });
-
-    function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
-    document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
-
-    function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    function joinChat() {
-        const n = document.getElementById('nick-input').value.trim();
-        const p = document.getElementById('pass-input').value.trim();
-        if(n) socket.emit('join', { nick: n, password: p });
-    }
-
-    socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
-    socket.on('login success', d => { 
-        myNick = d.nick; myRole = d.role; 
-        document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') {
-            document.getElementById('admin-tools').style.display = 'flex';
-            document.getElementById('admin-radio-panel').style.display = 'flex';
-            selectedColor = "#ff4757"; 
-            document.getElementById('colorPicker').value = "#ff4757";
-        }
-    });
-
-    // --- RADYO ALICI MANTIĞI ---
-    socket.on('audio-stream', async (data) => {
-        if (!audioCtx || audioCtx.state === 'suspended') return;
         
-        document.getElementById('status-dot').classList.add('live');
-        document.getElementById('status-txt').innerText = "CANLI YAYIN";
-        document.getElementById('status-txt').style.color = "#ff4757";
+        // Boş ses gönder (Tarayıcıyı ikna et)
+        const osc = audioCtx.createOscillator();
+        osc.connect(gainNode);
+        osc.start(0); osc.stop(0.1);
 
-        const arrayBuf = await data.arrayBuffer();
-        audioCtx.decodeAudioData(arrayBuf, (buffer) => {
+        socket.emit('join', { nick, password: pass });
+    }
+
+    socket.on('login success', d => {
+        myRole = d.role;
+        document.getElementById('login-overlay').style.display = 'none';
+        if(myRole === 'Yönetici') document.getElementById('admin-controls').style.display = 'flex';
+    });
+
+    // 2. YÖNETİCİ: SES GÖNDERME
+    let mediaRecorder;
+    async function toggleBroadcast() {
+        if (!isLive) {
+            const file = document.getElementById('music-file').files[0];
+            if(!file) return alert("Dosya seç!");
+
+            const audio = new Audio(URL.createObjectURL(file));
+            const stream = audio.captureStream ? audio.captureStream() : audio.mozCaptureStream();
+            
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+            mediaRecorder.ondataavailable = e => {
+                if(e.data.size > 0) socket.emit('audio-packet', e.data);
+            };
+            
+            audio.play();
+            mediaRecorder.start(500); // 500ms paketler
+            isLive = true;
+            document.getElementById('broad-btn').innerText = "⬛ DURDUR";
+        } else {
+            location.reload();
+        }
+    }
+
+    // 3. DİNLEYİCİ: SESİ ÇALMA (PLAYER OLMADAN, DOĞRUDAN HOPARLÖRE)
+    let nextTime = 0;
+    socket.on('audio-stream', async (data) => {
+        if(!audioCtx) return;
+        
+        document.getElementById('live-dot').style.display = 'inline-block';
+        document.getElementById('status-text').innerText = "🔴 CANLI YAYIN";
+
+        const buffer = await data.arrayBuffer();
+        audioCtx.decodeAudioData(buffer, (decoded) => {
             const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
+            source.buffer = decoded;
             source.connect(gainNode);
+            
             if (nextTime < audioCtx.currentTime) nextTime = audioCtx.currentTime + 0.1;
             source.start(nextTime);
-            nextTime += buffer.duration;
+            nextTime += decoded.duration;
         });
     });
 
-    // --- YÖNETİCİ YAYIN MANTIĞI ---
-    async function toggleLive() {
-        if (!isLiveBroadcasting) {
-            const dest = audioCtx.createMediaStreamDestination();
-            if (document.getElementById('mic-check').checked) {
-                const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioCtx.createMediaStreamSource(micStream).connect(dest);
-            }
-            const sel = document.getElementById('music-list');
-            if (sel.value !== "") {
-                const file = document.getElementById('music-up').files[sel.selectedIndex];
-                const audioObj = new Audio(URL.createObjectURL(file));
-                const source = audioCtx.createMediaElementSource(audioObj);
-                source.connect(dest); source.connect(audioCtx.destination);
-                audioObj.play();
-            }
-            const recorder = new MediaRecorder(dest.stream, { mimeType: 'audio/webm; codecs=opus' });
-            recorder.ondataavailable = e => socket.emit('audio-stream', e.data);
-            recorder.start(600);
-            isLiveBroadcasting = true;
-            document.getElementById('live-btn').innerText = "⬛ DURDUR";
-            socket.emit('stream-status', true);
-        } else { location.reload(); }
+    // CHAT VE DİĞERLERİ
+    function sendMsg(e) {
+        e.preventDefault();
+        const i = document.getElementById('input');
+        if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; }
     }
 
-    function listMusic(input) {
-        const sel = document.getElementById('music-list'); sel.innerHTML = "";
-        Array.from(input.files).forEach((f, i) => { sel.innerHTML += `<option value="${i}">${f.name}</option>`; });
-    }
-
-    document.getElementById('vol-slider').oninput = (e) => { if(gainNode) gainNode.gain.value = e.target.value; };
-
-    // Chat Message ve Diğer Orijinal Socket Eventleri
-    socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
     socket.on('chat message', d => {
-        if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
-        const div = document.createElement('div'); div.style.marginBottom = "8px";
-        let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
-        div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
+        const div = document.createElement('div');
+        div.innerHTML = `<b style="color:${d.color}">${d.user}:</b> <span>${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
-    socket.on('status update', s => {
-        const o = document.getElementById('ban-overlay');
-        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
-    });
-
-    socket.on('force logout', () => { document.getElementById('ban-overlay').style.display = 'flex'; document.getElementById('ban-text').innerText = "ODA KAPATILDI!"; setTimeout(() => location.reload(), 2000); });
-
-    socket.on('user list', data => {
-        const adminNameEl = document.getElementById('admin-display-name');
-        let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
-        if (adminUser) adminNameEl.style.color = adminUser.color; else adminNameEl.style.color = data.adminOnline ? "#ff4757" : "#555";
-        const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
-        data.list.forEach(u => {
-            if(u.nick === "Keyifciyiz_Fm") return;
-            const item = document.createElement('div'); item.className = 'user-item';
-            const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
-            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
-            if (myRole === 'Yönetici') {
-                box.style.cursor = "pointer";
-                box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
-            }
-            const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
-            item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
-        });
-    });
-
-    socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
-    function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
-    function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
-    function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
-    function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
-    function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
-    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
+    document.getElementById('vol-control').oninput = (e) => {
+        if(gainNode) gainNode.gain.value = e.target.value;
+    };
 </script>
 </body>
 </html>
