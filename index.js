@@ -5,10 +5,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    // Flatcast gibi akıcı bir ses için buffer limitini optimize ettik
-    maxHttpBufferSize: 1e8 
-});
+const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -21,7 +18,7 @@ let shutdownTimer = null;
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// EMOJİ PARSER (Orijinal haliyle korundu)
+// EMOJİ PARSER
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
@@ -40,6 +37,7 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
         
+        // Yayıncı yoksa odayı kapatma mantığı
         if (adminCount === 0 && !isTargetAdmin) {
             return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
         }
@@ -53,7 +51,6 @@ io.on('connection', (socket) => {
             if (shutdownTimer) {
                 clearTimeout(shutdownTimer);
                 shutdownTimer = null;
-                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yayıncı bağlandı, mikser devralındı.", color: "#2ecc71" });
             }
         }
         
@@ -70,25 +67,13 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    // --- FLATCAST SES İLETİM MOTORU ---
-    // Yöneticiden gelen ses paketini al ve diğer herkese gönder
-    socket.on('audio-stream', (data) => {
-        if (socket.role === 'Yönetici') {
-            socket.broadcast.emit('audio-out', data);
-        }
-    });
-
+    // Durum Güncelleme (Mute/Ban)
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
         
-        let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
-        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
-                if(statusMsg !== "") {
-                    io.to(id).emit('chat message', { user: "BİLGİ", text: statusMsg, color: "#f1c40f", style: { bold: true, italic: true } });
-                }
                 users[id].status = data.state;
                 io.to(id).emit('status update', data.state);
             }
@@ -96,17 +81,31 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
+    // Mesaj Gönderimi
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
-            if (userStatus[u.nick] === 2) return;
-            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style, isMuted: (userStatus[u.nick] === 1) };
+            if (userStatus[u.nick] === 2) return; // Banlıysa mesaj atamaz
+            
+            const msgData = { 
+                user: u.nick, 
+                text: parseEmojis(data.text), 
+                color: data.color || u.color, 
+                style: data.style, 
+                isMuted: (userStatus[u.nick] === 1) 
+            };
+
             if (userStatus[u.nick] === 1) {
+                // Susturulmuşsa sadece kendine ve adminlere gider
                 socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
-                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                    if (users[id].role === 'Yönetici' && id !== socket.id) {
+                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                    }
                 });
-            } else { io.emit('chat message', msgData); }
+            } else { 
+                io.emit('chat message', msgData); 
+            }
         }
     });
 
@@ -126,7 +125,7 @@ io.on('connection', (socket) => {
                 adminCount--;
                 if (adminCount <= 0) {
                     adminCount = 0;
-                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı değişikliği bekleniyor...", color: "#f1c40f" });
+                    io.emit('chat message', { user: "BİLGİ", text: "⚠️ Yayıncı ayrıldı, oda 60 saniye içinde kapanacak...", color: "#f1c40f" });
                     shutdownTimer = setTimeout(() => {
                         io.emit('force logout'); 
                         users = {};
@@ -140,4 +139,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Sunucu ${PORT} portunda çalışıyor...`);
+});
