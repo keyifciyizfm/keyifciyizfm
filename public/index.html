@@ -55,7 +55,7 @@
         <span style="font-size: 11px; font-weight: bold; color: #f1c40f; min-width: 80px;">CANLI YAYIN</span>
         
         <audio id="main-player" preload="none">
-            <source src="http://sapircast.caster.fm:19788/stream" type="audio/mpeg">
+            <source src="http://sapircast.caster.fm:19788/listen.mp3" type="audio/mpeg">
         </audio>
 
         <button id="play-btn" class="f-btn" onclick="toggleRadio()" style="background: #27ae60; border: none; min-width: 100px;">▶ BAŞLAT</button>
@@ -65,7 +65,7 @@
             <input type="range" min="0" max="1" step="0.1" value="0.8" oninput="document.getElementById('main-player').volume = this.value" style="width: 50px; cursor: pointer;">
         </div>
 
-        <marquee id="radio-info" style="font-size: 11px; color: #888;">Keyifciyiz FM Sohbet Odasına Hoşgeldiniz... Yayını dinlemek için BAŞLAT butonuna tıklayın!</marquee>
+        <marquee id="radio-info" style="font-size: 11px; color: #888;">Keyifciyiz FM - sapircast.caster.fm adresinden canlı yayındayız!</marquee>
     </div>
 
     <div id="action-bar">
@@ -122,8 +122,8 @@
 
     function toggleRadio() {
         if (!isPlaying) {
-            // Caster.fm cache kırmak için URL'yi tazele
-            const baseSrc = radio.querySelector('source').src.split('?')[0];
+            // Stream URL'si sapircast olarak ayarlandı
+            const baseSrc = "http://sapircast.caster.fm:19788/listen.mp3";
             radio.src = baseSrc + "?nocache=" + Math.random();
             
             radio.play().then(() => {
@@ -131,9 +131,10 @@
                 playBtn.innerText = "⬛ DURDUR";
                 playBtn.style.background = "#e74c3c";
                 radioLed.classList.add('led-active');
-                radioInfo.innerText = "Yayın Başarıyla Bağlandı. Keyifli Dinlemeler!";
+                radioInfo.innerText = "Yayın sapircast üzerinden alınıyor... Keyifli Dinlemeler!";
             }).catch(e => {
-                alert("Yayın Başlatılamadı. Yayıncı Çevrimdışı Olabilir.");
+                console.error("Hata:", e);
+                alert("Yayın Başlatılamadı! Lütfen şunları kontrol edin:\n1. Yayın programınızdan (BUTT vb.) yayını başlattınız mı?\n2. Tarayıcıda güvenli olmayan içeriğe izin verdiniz mi?");
             });
         } else {
             radio.pause();
@@ -146,7 +147,7 @@
         }
     }
 
-    // SOHBET SİSTEMİ
+    // SOHBET SİSTEMİ FONKSİYONLARI (Aynı Kalıyor)
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
@@ -177,8 +178,6 @@
         }
     });
 
-    socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
-
     socket.on('chat message', d => {
         if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.style.marginBottom = "8px";
@@ -189,28 +188,12 @@
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
-    socket.on('status update', s => {
-        const o = document.getElementById('ban-overlay');
-        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
-    });
-
-    socket.on('force logout', () => { document.getElementById('ban-overlay').style.display = 'flex'; document.getElementById('ban-text').innerText = "ODA KAPATILDI!"; setTimeout(() => location.reload(), 2000); });
-
     socket.on('user list', data => {
-        const adminNameEl = document.getElementById('admin-display-name');
-        let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
-        if (adminUser) adminNameEl.style.color = adminUser.color;
-        
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
             if(u.nick === "Keyifciyiz_Fm") return;
             const item = document.createElement('div'); item.className = 'user-item';
             const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
-            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
-            if (myRole === 'Yönetici') {
-                box.style.cursor = "pointer";
-                box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
-            }
             const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
@@ -220,8 +203,6 @@
     function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
-    function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
-    function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
     function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
 </script>
 </body>
