@@ -10,8 +10,8 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
+let userStatus = {}; 
 let bannedIPs = [];
-let userStatus = {}; // { 'Nick': DurumKodu }
 
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
@@ -19,7 +19,8 @@ const masterPass = "123456";
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
-        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399"
+        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
+        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
     };
     let newText = text;
     for (const [code, id] of Object.entries(emojiMap)) {
@@ -30,12 +31,7 @@ function parseEmojis(text) {
 }
 
 io.on('connection', (socket) => {
-    const userIP = socket.handshake.address;
-
     socket.on('join', (data) => {
-        if (bannedIPs.includes(userIP)) return socket.emit('auth error', 'Girişiniz engellendi!');
-        if (data.nick === masterNick && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
-        
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
@@ -43,50 +39,55 @@ io.on('connection', (socket) => {
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
 
         users[socket.id] = { 
-            id: socket.id, 
-            nick: socket.nick, 
-            role: socket.role, 
-            color: socket.color, 
-            status: userStatus[socket.nick] 
+            id: socket.id, nick: socket.nick, role: socket.role, 
+            color: socket.color, status: userStatus[socket.nick] 
         };
 
         socket.emit('login success', { role: socket.role, nick: socket.nick });
-        // Kullanıcı giriş yaptığında durumu neyse onu bildir (Engelliyse kutusu kapalı başlar)
         socket.emit('status update', userStatus[socket.nick]);
         io.emit('user list', Object.values(users));
     });
 
+    // Renk Değiştirme Dinleyicisi
+    socket.on('update color', (newColor) => {
+        if (users[socket.id]) {
+            users[socket.id].color = newColor;
+            io.emit('user list', Object.values(users)); // Listeyi güncelle ki nick rengi değişsin
+        }
+    });
+
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
-        
         userStatus[data.target] = data.state;
-
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
                 users[id].status = data.state;
-                // İlgili kullanıcıya yeni durumunu anlık bildir
                 io.to(id).emit('status update', data.state);
             }
         });
-
         io.emit('user list', Object.values(users));
     });
 
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
-            const state = userStatus[u.nick] || 0;
+            if (userStatus[u.nick] === 2) return;
 
-            if (state === 2) return; // Tam Engelli: Mesajı hiçbir yere gönderme
+            const msgData = { 
+                user: u.nick, 
+                text: parseEmojis(data.text), 
+                color: data.color || u.color, 
+                style: data.style 
+            };
 
-            if (state === 1) { // Susturulmuş (Mavi)
-                const msg = { user: u.nick, text: parseEmojis(data.text), color: u.color, isMuted: true };
-                socket.emit('chat message', msg);
+            if (userStatus[u.nick] === 1) {
+                msgData.isMuted = true;
+                socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => {
-                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', msg);
+                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', msgData);
                 });
-            } else { // Normal
-                io.emit('chat message', { user: u.nick, text: parseEmojis(data.text), color: u.color });
+            } else {
+                io.emit('chat message', msgData);
             }
         }
     });
