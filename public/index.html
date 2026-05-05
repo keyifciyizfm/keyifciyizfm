@@ -12,6 +12,7 @@
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 6px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; display: flex; align-items: center; min-width: 35px; justify-content: center; }
+        .f-btn:hover { background: #555; }
         .f-btn.active { background: #2ecc71; color: #000; }
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; }
@@ -33,26 +34,13 @@
             box-shadow: 0 -5px 25px #000; 
             z-index: 50; 
         }
-        .emoji-item { 
-            cursor: pointer; 
-            width: 35px; 
-            height: 35px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 20px; 
-            background: #444; 
-            border-radius: 5px;
-        }
-        .emoji-item:hover { background: #555; transform: scale(1.1); }
+        .emoji-item { cursor: pointer; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 20px; background: #444; border-radius: 5px; }
         
         form#form { display: flex; padding: 12px; background: #3b3b3b; gap: 8px; border-top: 1px solid #444; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #custom-menu { display: none; position: absolute; background: #2a2a2a; border: 1px solid #f1c40f88; z-index: 2000; width: 160px; border-radius: 2px; }
         .menu-item { padding: 10px 15px; cursor: pointer; color: #ddd; font-size: 12px; border-bottom: 1px solid #333; }
-        .menu-item:hover { background: #3d3d3d; color: #fff; }
         
-        /* Sistem Mesajı Stili (Herkes için) */
         .system-msg { color: #f1c40f; font-style: italic; font-size: 12px; margin: 5px 0; border-left: 3px solid #f1c40f; padding-left: 10px; background: rgba(241, 196, 15, 0.1); }
     </style>
 </head>
@@ -64,7 +52,6 @@
         <input type="text" id="nick-input" placeholder="Nickiniz..." oninput="checkAdmin(this.value)" style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;">
         <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..." style="padding:10px; margin-bottom:10px; display:block; width:100%; background:#222; color:#fff; border:1px solid #444;"></div>
         <button class="f-btn" style="margin: 0 auto; padding: 10px 30px;" onclick="joinChat()">BAĞLAN</button>
-        <p id="error-msg" style="color:red; font-size:11px; margin-top:10px;"></p>
     </div>
 </div>
 
@@ -77,14 +64,19 @@
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button>
-        <div style="margin-left: 20px; border-left: 1px solid #555; padding-left: 15px; display: flex; align-items: center; gap: 5px;">
+        <div style="margin-left: 15px; border-left: 1px solid #555; padding-left: 15px; display: flex; align-items: center; gap: 5px;">
             <button class="f-btn" onclick="changeFontSize(2)">A+</button>
-            <button class="f-btn" onclick="changeFontSize(-2)" style="margin-right: 15px;">A-</button>
-            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>A</b></button>
+            <button class="f-btn" onclick="changeFontSize(-2)">A-</button>
+            <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')"><b>B</b></button>
             <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
-            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
         </div>
-        <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="margin-left:20px; width:35px; height:22px; cursor:pointer;">
+        
+        <div style="margin-left:15px; display: flex; align-items: center; gap: 8px;">
+            <input type="color" id="colorPicker" value="#2ecc71" onchange="changeColor(this.value)" style="width:30px; height:25px; cursor:pointer; border:none; background:none;">
+            <button class="f-btn" onclick="saveToNotes()" style="color: #2ecc71; font-weight: bold;">Chat</button>
+            <button class="f-btn" onclick="showNotes()">Notlar</button>
+        </div>
+
         <div style="flex: 1;"></div>
         <button class="f-btn" onclick="location.reload()">Çıkış</button>
     </div>
@@ -110,17 +102,9 @@
 
     const emojis = ['😊', '😂', '😎', '❤️', '🔥', '🌹', '👍', '🎤', '😉', '⭐', '☕', '🎵', '🎁', '⚡', '👏', '🥳'];
     const panel = document.getElementById('emoji-panel');
-    
     emojis.forEach(e => {
-        let d = document.createElement('div'); 
-        d.className = 'emoji-item';
-        d.innerText = e;
-        d.onclick = (event) => { 
-            event.stopPropagation();
-            document.getElementById('input').value += e; 
-            document.getElementById('input').focus(); 
-            panel.style.display = 'none';
-        };
+        let d = document.createElement('div'); d.className = 'emoji-item'; d.innerText = e;
+        d.onclick = (event) => { event.stopPropagation(); document.getElementById('input').value += e; document.getElementById('input').focus(); panel.style.display = 'none'; };
         panel.appendChild(d);
     });
 
@@ -129,16 +113,6 @@
     
     socket.on('login success', d => { myNick = d.nick; myRole = d.role; document.getElementById('login-overlay').style.display = 'none'; });
     
-    // SUNUCUDAN GELEN SİSTEM MESAJLARINI YAKALA (Herkes görsün diye)
-    socket.on('system notification', data => {
-        const msgBox = document.getElementById('messages');
-        const systemDiv = document.createElement('div');
-        systemDiv.className = 'system-msg';
-        systemDiv.innerText = data.text;
-        msgBox.appendChild(systemDiv);
-        msgBox.scrollTop = msgBox.scrollHeight;
-    });
-
     socket.on('chat message', d => {
         if (mutedUsers.includes(d.user)) return;
         const div = document.createElement('div'); div.style.marginBottom = "8px"; const s = d.style || {};
@@ -157,50 +131,45 @@
         });
     });
 
-    function openAdminMenu(t, e) { 
-        if (myRole !== 'Yönetici' || t === myNick) return; 
-        selectedTarget = t; 
-        const m = document.getElementById('custom-menu'); 
-        m.style.display = 'block'; 
-        m.style.left = e.pageX + "px"; 
-        m.style.top = e.pageY + "px"; 
-        e.stopPropagation(); 
-    }
-    
-    document.addEventListener('click', () => { 
-        document.getElementById('custom-menu').style.display = 'none'; 
-        document.getElementById('emoji-panel').style.display = 'none'; 
-    });
+    function openAdminMenu(t, e) { if (myRole !== 'Yönetici' || t === myNick) return; selectedTarget = t; const m = document.getElementById('custom-menu'); m.style.display = 'block'; m.style.left = e.pageX + "px"; m.style.top = e.pageY + "px"; e.stopPropagation(); }
+    document.addEventListener('click', () => { document.getElementById('custom-menu').style.display = 'none'; document.getElementById('emoji-panel').style.display = 'none'; });
+    function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex' ? 'none' : 'flex'); }
 
-    function toggleEmojiPanel(e) { 
-        e.stopPropagation(); 
-        const p = document.getElementById('emoji-panel'); 
-        p.style.display = (p.style.display === 'flex' ? 'none' : 'flex'); 
-    }
-
-    // --- YENİLENMİŞ AKSİYONLAR ---
-
+    // SUSTURMA VE ODADAN ATMA (Keyifciyiz_Fm Formatı)
     function muteAction() {
         let actionText = "";
         if (mutedUsers.includes(selectedTarget)) {
             mutedUsers = mutedUsers.filter(u => u !== selectedTarget);
-            actionText = `📢 Sistem: ${myNick}, ${selectedTarget} kullanıcısının susturulmasını kaldırdı.`;
+            actionText = `📢 Keyifciyiz_Fm: ${selectedTarget} kullanıcısını açtı.`;
         } else {
             mutedUsers.push(selectedTarget);
-            actionText = `🚫 Sistem: ${myNick}, ${selectedTarget} kullanıcısını susturdu.`;
+            actionText = `🚫 Keyifciyiz_Fm: ${selectedTarget} kullanıcısını susturdu.`;
         }
-        
-        // Sunucuya "herkese göster" mesajı gönder
         socket.emit('chat message', { text: actionText, color: '#f1c40f', isSystem: true });
-        document.getElementById('custom-menu').style.display = 'none';
     }
 
     function kickAction() {
-        const actionText = `🚪 Sistem: ${myNick}, ${selectedTarget} kullanıcısını odadan attı!`;
-        // Sunucuya komutu ve sistem mesajını gönder
+        const actionText = `🚪 Keyifciyiz_Fm: ${selectedTarget} kullanıcısını odadan attı!`;
         socket.emit('admin command', {action: 'kick', targetNick: selectedTarget});
         socket.emit('chat message', { text: actionText, color: '#ff4757', isSystem: true });
-        document.getElementById('custom-menu').style.display = 'none';
+    }
+
+    // CHAT (NOT) KAYDETME SİSTEMİ
+    function saveToNotes() {
+        const input = document.getElementById('input');
+        if(!input.value.trim()) return alert("Kaydedilecek bir metin yazın!");
+        let notes = JSON.parse(localStorage.getItem('fm_notes') || '[]');
+        notes.push({ date: new Date().toLocaleString(), text: input.value });
+        localStorage.setItem('fm_notes', JSON.stringify(notes));
+        alert("Mesaj Chat Notlarına Kaydedildi!");
+        input.value = "";
+    }
+
+    function showNotes() {
+        let notes = JSON.parse(localStorage.getItem('fm_notes') || '[]');
+        if(notes.length === 0) return alert("Kayıtlı not bulunamadı.");
+        let list = notes.map((n, i) => `${i+1}. [${n.date}] ${n.text}`).join('\n\n');
+        alert(list);
     }
 
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
