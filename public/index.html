@@ -6,17 +6,24 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        
+        /* GİRİŞ EKRANI */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        #chat-container { width: 950px; height: 650px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        
+        /* ANA PANEL */
+        #chat-container { width: 950px; height: 680px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         
-        /* RADYO PLAYER STİLLERİ */
-        #radio-bar { background: #222; padding: 10px; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #444; }
-        #radio-led { width: 10px; height: 10px; background: #555; border-radius: 50%; transition: 0.3s; }
-        .led-active { background: #ff4757 !important; box-shadow: 0 0 10px #ff4757; }
+        /* MİNİMAL RADYO BAR */
+        #radio-bar { background: #222; padding: 8px; display: flex; align-items: center; border-bottom: 1px solid #444; height: 60px; }
+        #radio-led { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; box-shadow: 0 0 8px #2ecc71; margin-right: 8px; }
         
+        /* Player Maskeleme Kutusu */
+        #player-mask { width: 140px; height: 40px; overflow: hidden; position: relative; border-radius: 4px; background: #000; border: 1px solid #444; margin-left: 15px; }
+        #player-mask iframe { width: 400px; height: 200px; position: absolute; top: -78px; left: -10px; border: none; }
+
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
@@ -27,9 +34,11 @@
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; }
         #admin-display-name { font-weight: bold; font-size: 15px; }
+        
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
         .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
+        
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
@@ -49,23 +58,20 @@
 
 <div id="chat-container">
     <div id="top-gradient"></div>
-
+    
     <div id="radio-bar">
-        <div id="radio-led"></div>
-        <span style="font-size: 11px; font-weight: bold; color: #f1c40f; min-width: 80px;">CANLI YAYIN</span>
-        
-        <audio id="main-player" preload="none">
-            <source src="http://sapircast.caster.fm:19788/listen.mp3" type="audio/mpeg">
-        </audio>
-
-        <button id="play-btn" class="f-btn" onclick="toggleRadio()" style="background: #27ae60; border: none; min-width: 100px;">▶ BAŞLAT</button>
-        
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 10px; color: #666;">VOL:</span>
-            <input type="range" min="0" max="1" step="0.1" value="0.8" oninput="document.getElementById('main-player').volume = this.value" style="width: 50px; cursor: pointer;">
+        <div style="display: flex; align-items: center; margin-left: 10px;">
+            <div id="radio-led"></div>
+            <span style="font-size: 11px; font-weight: bold; color: #f1c40f;">CANLI YAYIN</span>
         </div>
 
-        <marquee id="radio-info" style="font-size: 11px; color: #888;">Keyifciyiz FM - sapircast.caster.fm adresinden canlı yayındayız!</marquee>
+        <div id="player-mask">
+            <iframe src="https://yazgulumfm.ismyradio.com/player" scrolling="no"></iframe>
+        </div>
+
+        <marquee style="font-size: 11px; color: #888; flex: 1; margin-left: 20px; font-style: italic;">
+            Yazgülüm FM Keyifli Dinlemeler Diler... Yayını duymak için yukarıdaki Play butonuna basınız.
+        </marquee>
     </div>
 
     <div id="action-bar">
@@ -113,41 +119,7 @@
     var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
-    // RADYO SİSTEMİ
-    const radio = document.getElementById('main-player');
-    const playBtn = document.getElementById('play-btn');
-    const radioLed = document.getElementById('radio-led');
-    const radioInfo = document.getElementById('radio-info');
-    let isPlaying = false;
-
-    function toggleRadio() {
-        if (!isPlaying) {
-            // Stream URL'si sapircast olarak ayarlandı
-            const baseSrc = "https://sapircast.caster.fm:19788/listen.mp3";
-            radio.src = baseSrc + "?nocache=" + Math.random();
-            
-            radio.play().then(() => {
-                isPlaying = true;
-                playBtn.innerText = "⬛ DURDUR";
-                playBtn.style.background = "#e74c3c";
-                radioLed.classList.add('led-active');
-                radioInfo.innerText = "Yayın sapircast üzerinden alınıyor... Keyifli Dinlemeler!";
-            }).catch(e => {
-                console.error("Hata:", e);
-                alert("Yayın Başlatılamadı! Lütfen şunları kontrol edin:\n1. Yayın programınızdan (BUTT vb.) yayını başlattınız mı?\n2. Tarayıcıda güvenli olmayan içeriğe izin verdiniz mi?");
-            });
-        } else {
-            radio.pause();
-            radio.src = "";
-            isPlaying = false;
-            playBtn.innerText = "▶ BAŞLAT";
-            playBtn.style.background = "#27ae60";
-            radioLed.classList.remove('led-active');
-            radioInfo.innerText = "Radyo Durduruldu.";
-        }
-    }
-
-    // SOHBET SİSTEMİ FONKSİYONLARI (Aynı Kalıyor)
+    // EMOJİLER
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
@@ -161,6 +133,7 @@
     document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
 
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
+    
     function joinChat() {
         const n = document.getElementById('nick-input').value.trim();
         const p = document.getElementById('pass-input').value.trim();
@@ -168,6 +141,7 @@
     }
 
     socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
+    
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
@@ -189,11 +163,20 @@
     });
 
     socket.on('user list', data => {
+        const adminNameEl = document.getElementById('admin-display-name');
+        let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
+        if (adminUser) adminNameEl.style.color = adminUser.color;
+        
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
             if(u.nick === "Keyifciyiz_Fm") return;
             const item = document.createElement('div'); item.className = 'user-item';
             const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
+            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
+            if (myRole === 'Yönetici') {
+                box.style.cursor = "pointer";
+                box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
+            }
             const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
@@ -203,6 +186,8 @@
     function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
+    function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
+    function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
     function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
 </script>
 </body>
