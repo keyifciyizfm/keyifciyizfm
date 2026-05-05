@@ -5,8 +5,10 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-// maxHttpBufferSize: 100MB (Büyük şarkılar için gerekli)
-const io = new Server(server, { maxHttpBufferSize: 1e8 });
+// maxHttpBufferSize: 100MB şarkı yüklemelerine izin verir
+const io = new Server(server, {
+    maxHttpBufferSize: 1e8 
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -14,31 +16,44 @@ let adminNick = "Keyifciyiz_Fm";
 let adminPass = "123456";
 
 io.on('connection', (socket) => {
+    console.log('Yeni bağlantı:', socket.id);
+
     socket.on('join', (data) => {
         const isAdmin = (data.nick === adminNick && data.password === adminPass);
         socket.role = isAdmin ? 'Yönetici' : 'Dinleyici';
-        socket.nick = data.nick;
+        socket.nick = data.nick || "Misafir";
+        
         socket.emit('login-success', { role: socket.role });
-        console.log(`${socket.nick} bağlandı. Rol: ${socket.role}`);
+        console.log(`${socket.nick} (${socket.role}) giriş yaptı.`);
     });
 
-    // Yönetici şarkı başlattığında diğerlerine haber ver
-    socket.on('admin-play', (audioData) => {
+    // Müzik Verisini Dağıtma
+    socket.on('broadcast-audio', (audioData) => {
         if (socket.role === 'Yönetici') {
-            socket.broadcast.emit('client-play', audioData);
+            // Veriyi tüm dinleyicilere gönder
+            socket.broadcast.emit('play-audio', audioData);
         }
     });
 
-    // Yönetici yayını durdurduğunda
-    socket.on('admin-stop', () => {
+    // Yayını Durdurma
+    socket.on('stop-broadcast', () => {
         if (socket.role === 'Yönetici') {
-            socket.broadcast.emit('client-stop');
+            socket.broadcast.emit('stop-audio');
         }
     });
 
-    socket.on('chat-message', (msg) => {
-        io.emit('chat-message', { user: socket.nick, text: msg });
+    // Sohbet Mesajları
+    socket.on('chat-message', (text) => {
+        io.emit('chat-message', { user: socket.nick, text: text });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Bağlantı koptu:', socket.id);
     });
 });
 
-server.listen(3000, () => console.log("Radyo Server 3000 portunda aktif!"));
+const PORT = 3000;
+server.listen(PORT, () => {
+    console.log(`--- Keyifciyiz FM Aktif ---`);
+    console.log(`Adres: http://localhost:${PORT}`);
+});
