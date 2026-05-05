@@ -11,10 +11,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let users = {}; 
 let userStatus = {}; 
+let currentBackground = ""; // ARKA PLAN HAFIZASI: Yeni gelenler için burada tutuyoruz.
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// Emoji Çözücü
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
@@ -37,11 +37,27 @@ io.on('connection', (socket) => {
         socket.nick = data.nick || "Misafir";
         socket.role = (data.nick === masterNick) ? 'Yönetici' : 'Dinleyici';
         socket.color = (socket.role === 'Yönetici') ? '#ff4757' : '#2ecc71';
+        
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
+        
         users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
+        
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         socket.emit('status update', userStatus[socket.nick]);
+        
+        // YENİ GELENE MEVCUT ARKA PLANI GÖNDER
+        if (currentBackground !== "") {
+            socket.emit('background changed', currentBackground);
+        }
+
         io.emit('user list', Object.values(users));
+    });
+
+    socket.on('change background', (url) => { 
+        if (socket.role === 'Yönetici') {
+            currentBackground = url; // Hafızaya al
+            io.emit('background changed', url); // Herkese duyur
+        }
     });
 
     socket.on('update status', (data) => {
@@ -61,8 +77,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
-
-    socket.on('change background', (url) => { if (socket.role === 'Yönetici') io.emit('background changed', url); });
 
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
