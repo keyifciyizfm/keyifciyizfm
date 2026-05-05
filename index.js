@@ -57,7 +57,6 @@ io.on('connection', (socket) => {
         if(data.state === 2) statusMsg = `🚫 [${data.target}] Engellendiniz!`;
         if(data.state === 0) statusMsg = `✅ [${data.target}] Sohbete devam edebilirsiniz.`;
 
-        // Özel mesajı sadece yöneticiye ve hedefe gönder
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target || users[id].role === 'Yönetici') {
                 io.to(id).emit('chat message', { 
@@ -89,10 +88,9 @@ io.on('connection', (socket) => {
             };
 
             if (userStatus[u.nick] === 1) {
-                socket.emit('chat message', msgData); // Kendine göster
+                socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
                     if (users[id].role === 'Yönetici' && id !== socket.id) {
-                        // Yöneticiye (Susturuldu) etiketiyle gönder
                         io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" }); 
                     }
                 });
@@ -102,13 +100,20 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('clear chat', () => {
+        if (socket.role === 'Yönetici') {
+            io.emit('chat cleared'); // Herkese temizleme emri gönder
+        }
+    });
+
     socket.on('change background', (url) => { 
         if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); }
     });
+    
     socket.on('update color', (newColor) => {
         if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); }
     });
-    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
+
     socket.on('disconnect', () => {
         if (users[socket.id]) { delete users[socket.id]; io.emit('user list', Object.values(users)); }
     });
