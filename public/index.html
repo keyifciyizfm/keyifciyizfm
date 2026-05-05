@@ -20,12 +20,13 @@
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; position: relative; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; border-radius: 2px; font-size: 13px; color: #fff; }
         
+        /* ENGEL PERDESİ */
         #ban-overlay { display: none; position: absolute; top: 8px; left: 8px; width: calc(75% - 6px); height: calc(100% - 16px); background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; text-align: center; }
 
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border-radius: 2px; }
-        .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
+        .status-0 { background: #222; } .status-1 { background: #3498db; color: #fff; } .status-2 { background: #e74c3c; color: #fff; }
 
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #333; border: 2px solid #555; padding: 15px; flex-wrap: wrap; gap: 10px; width: 280px; border-radius: 8px; z-index: 200; box-shadow: 0 -5px 25px #000; }
         .emoji-item { cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
@@ -50,6 +51,8 @@
     <div id="top-gradient"></div>
     <div id="action-bar">
         <button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button>
+        <button id="clear-btn" class="f-btn" style="display:none; color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
+        
         <div style="border-left: 1px solid #555; padding-left: 10px; display: flex; gap: 5px;">
             <button class="f-btn" onclick="changeFontSize(2)">A+</button>
             <button class="f-btn" onclick="changeFontSize(-2)">A-</button>
@@ -86,7 +89,7 @@
     var myNick = "", myRole = "", myStatus = 0, currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
 
-    // Emoji Paneli
+    // Emoji Paneli Oluşturma
     const emojis = [
         {c: ':smile:', i: '1f60a'}, {c: ':joy:', i: '1f602'}, {c: ':cool:', i: '1f60e'}, {c: ':heart:', i: '2764'},
         {c: ':fire:', i: '1f525'}, {c: ':rose:', i: '1f339'}, {c: ':thumbsup:', i: '1f44d'}, {c: ':microphone:', i: '1f399'},
@@ -106,7 +109,7 @@
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
-        // Girişte varsayılan rengi bildir
+        if(myRole === 'Yönetici') document.getElementById('clear-btn').style.display = 'flex';
         socket.emit('update color', selectedColor);
     });
 
@@ -117,13 +120,16 @@
         document.getElementById('send-btn').disabled = (state === 2);
     });
 
+    socket.on('chat cleared', () => {
+        document.getElementById('messages').innerHTML = '<div style="color:#555; text-align:center; margin:10px 0;">--- Sohbet Yönetici Tarafından Temizlendi ---</div>';
+    });
+
     socket.on('chat message', d => {
         if ((d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) || myStatus === 2) return;
         const div = document.createElement('div');
         div.style.marginBottom = "8px";
         const s = d.style || {};
         const pref = d.isMuted ? "<small style='color:gray'>[Susturuldu] </small>" : "";
-        
         div.innerHTML = `${pref}<b style="color:${d.color}">${d.user}:</b> 
             <span style="color:${d.color}; font-weight:${s.bold?'bold':'normal'}; font-style:${s.italic?'italic':'normal'}; text-decoration:${s.underline?'underline':'none'};">
                 ${d.text}
@@ -146,19 +152,14 @@
             }
             i.appendChild(box);
             const n = document.createElement('span'); 
-            n.style.color = u.color; // Sunucudan gelen rengi nicke uygula
-            n.style.fontWeight = "bold";
+            n.style.color = u.color; n.style.fontWeight = "bold";
             n.innerText = u.nick + (u.nick === "Keyifciyiz_Fm" ? " (Dj)" : "");
             i.appendChild(n); uDiv.appendChild(i);
         });
     });
 
-    function handleColorChange(c) {
-        selectedColor = c;
-        document.getElementById('input').style.color = c;
-        socket.emit('update color', c); // Rengi sunucuya bildir
-    }
-
+    function clearChat() { if(confirm("Tüm sohbeti silmek istediğine emin misin?")) socket.emit('clear chat'); }
+    function handleColorChange(c) { selectedColor = c; document.getElementById('input').style.color = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; }
