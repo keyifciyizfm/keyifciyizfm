@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Keyifciyiz FM - Canlı Sohbet & Mixer</title>
     <style>
-        /* SENİN ORİJİNAL TASARIMIN (DOKUNULMADI) */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
@@ -28,7 +27,7 @@
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
 
-        /* YENİ: FLATCAST STİLİ YÜZEN MIXER PANELİ */
+        /* YÜZEN MIXER PANELİ */
         #floating-mixer { 
             position: absolute; top: 80px; left: 50px; width: 380px; 
             background: #2c3e50; border: 3px solid #1a252f; border-radius: 12px; 
@@ -80,7 +79,7 @@
 
     <div id="floating-mixer">
         <div id="mixer-header">
-            <span>🎚️ RADYO MIXERI V1.0</span>
+            <span>🎚️ RADYO MIXERI</span>
             <button onclick="toggleMixer()" style="background:none; border:none; color:#fff; cursor:pointer;">[X]</button>
         </div>
         <div class="mixer-body">
@@ -92,7 +91,7 @@
                 <label style="font-size:11px; color:#fff;"><input type="checkbox" id="mic-toggle" checked> MİKROFON AKTİF</label>
                 <input type="range" id="master-vol" min="0" max="1" step="0.1" value="0.8" style="width:100px;">
             </div>
-            <div style="font-size:11px; color:#aaa;">MÜZİK KÜTÜPHANESİ (MAX 30)</div>
+            <div style="font-size:11px; color:#aaa;">MÜZİK KÜTÜPHANESİ</div>
             <input type="file" id="music-input" multiple accept="audio/*" style="font-size:10px; color:#ccc;">
             <div id="playlist-area"></div>
         </div>
@@ -126,7 +125,7 @@
     var styles = { bold: false, italic: false, underline: false };
 
     // --- SES MOTORU DEĞİŞKENLERİ ---
-    let audioCtx, mixerDest, micStream, currentMusic;
+    let audioCtx, mixerDest, currentMusic;
     let isBroadcasting = false;
 
     // --- MIXER SÜRÜKLEME ---
@@ -139,92 +138,78 @@
 
     function toggleMixer() { mixer.style.display = mixer.style.display === 'flex' ? 'none' : 'flex'; }
 
-    // --- YÖNETİCİ: YAYIN MOTORU ---
+    // --- DJ: YAYINI BAŞLAT ---
     async function toggleBroadcasting() {
         if (!isBroadcasting) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            mixerDest = audioCtx.createMediaStreamDestination();
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                mixerDest = audioCtx.createMediaStreamDestination();
 
-            // Mikrafonu al ve miksere bağla
-            if (document.getElementById('mic-toggle').checked) {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const micNode = audioCtx.createMediaStreamSource(micStream);
-                micNode.connect(mixerDest);
-            }
-
-            // Sesi paketle ve gönder (MediaRecorder)
-            const recorder = new MediaRecorder(mixerDest.stream, { mimeType: 'audio/webm; codecs=opus' });
-            recorder.ondataavailable = async (e) => {
-                if (e.data.size > 0) {
-                    const buffer = await e.data.arrayBuffer();
-                    socket.emit('audio-stream', buffer);
+                if (document.getElementById('mic-toggle').checked) {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const micNode = audioCtx.createMediaStreamSource(stream);
+                    micNode.connect(mixerDest);
                 }
-            };
-            recorder.start(1000); // 1 saniyelik paketler
 
-            isBroadcasting = true;
-            document.getElementById('live-btn').innerText = "⬛ YAYINI DURDUR";
-            document.getElementById('live-btn').style.background = "#c0392b";
-            document.getElementById('live-led').classList.add('led-live');
-        } else {
-            location.reload(); // En güvenli kapatma
-        }
+                const recorder = new MediaRecorder(mixerDest.stream, { mimeType: 'audio/webm;codecs=opus' });
+                recorder.ondataavailable = async (e) => {
+                    if (e.data.size > 0) {
+                        const buffer = await e.data.arrayBuffer();
+                        socket.emit('audio-stream', buffer);
+                    }
+                };
+                recorder.start(1000); 
+
+                isBroadcasting = true;
+                document.getElementById('live-btn').innerText = "⬛ YAYINI DURDUR";
+                document.getElementById('live-btn').style.background = "#c0392b";
+                document.getElementById('live-led').classList.add('led-live');
+            } catch (err) { alert("Mikrofon hatası: " + err); }
+        } else { location.reload(); }
     }
 
-    // --- MÜZİK ÇALMA VE MİKSERE EKLEME ---
+    // --- MÜZİK ÇALMA ---
     async function playTrack(index) {
         if (!isBroadcasting) return alert("Önce Yayını Başlatmalısın!");
-        
-        const files = document.getElementById('music-input').files;
-        const file = files[index];
+        const file = document.getElementById('music-input').files[index];
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-
         if (currentMusic) currentMusic.stop();
-        
         currentMusic = audioCtx.createBufferSource();
         currentMusic.buffer = audioBuffer;
-        
         const gainNode = audioCtx.createGain();
         gainNode.gain.value = document.getElementById('master-vol').value;
-        
         currentMusic.connect(gainNode);
-        gainNode.connect(mixerDest); // Yayına gönder
-        gainNode.connect(audioCtx.destination); // Sen de duy
-        
+        gainNode.connect(mixerDest);
+        gainNode.connect(audioCtx.destination);
         currentMusic.start();
     }
 
-    // --- DİNLEYİCİ: SESİ ALMA (KESİNTİSİZ AKIŞ) ---
-    let mediaSource = new MediaSource();
+    // --- DİNLEYİCİ: SESİ ALMA ---
     let sourceBuffer;
     let queue = [];
-    let audioPlayer = new Audio();
+    const mediaSource = new MediaSource();
+    const audioPlayer = new Audio();
+    audioPlayer.autoplay = true;
 
     socket.on('audio-out', async (buf) => {
         if (myRole === 'Yönetici') return;
-        
         if (!audioPlayer.src) {
             audioPlayer.src = URL.createObjectURL(mediaSource);
-            mediaSource.addEventListener('sourceopen', () => {
-                sourceBuffer = mediaSource.addSourceBuffer('audio/webm; codecs="opus"');
-                sourceBuffer.addEventListener('updateend', () => {
-                    if (queue.length > 0 && !sourceBuffer.updating) {
-                        sourceBuffer.appendBuffer(queue.shift());
-                    }
-                });
-            });
-            audioPlayer.play();
+            mediaSource.onsourceopen = () => {
+                sourceBuffer = mediaSource.addSourceBuffer('audio/webm;codecs=opus');
+                sourceBuffer.mode = 'sequence';
+                sourceBuffer.onupdateend = () => {
+                    if (queue.length > 0 && !sourceBuffer.updating) sourceBuffer.appendBuffer(queue.shift());
+                };
+            };
         }
-
         if (sourceBuffer && !sourceBuffer.updating) {
-            sourceBuffer.appendBuffer(buf);
-        } else {
-            queue.push(buf);
-        }
+            try { sourceBuffer.appendBuffer(buf); if (audioPlayer.paused) audioPlayer.play().catch(()=>{}); } catch (e) {}
+        } else { queue.push(buf); }
     });
 
-    // --- EMOJİ VE DİĞER FONKSİYONLAR (DEĞİŞMEDİ) ---
+    // --- SOHBET VE DİĞER FONKSİYONLAR ---
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
@@ -248,46 +233,30 @@
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') {
-            document.getElementById('admin-tools').style.display = 'flex';
-            selectedColor = "#ff4757"; 
-            document.getElementById('colorPicker').value = "#ff4757";
+        if (myRole === 'Dinleyici') {
+            const infoDiv = document.createElement('div');
+            infoDiv.innerHTML = "<div onclick='this.remove()' style='background:#f1c40f; color:#000; padding:10px; text-align:center; cursor:pointer; font-weight:bold; margin-bottom:10px; border-radius:5px;'>📢 YAYINI DUYMAK İÇİN BURAYA TIKLAYIN! (Tarayıcı İzni)</div>";
+            document.getElementById('messages').prepend(infoDiv);
         }
+        if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex';
     });
-
-    socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
 
     socket.on('chat message', d => {
         if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.style.marginBottom = "8px";
         let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
         div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     });
 
-    socket.on('status update', s => {
-        const o = document.getElementById('ban-overlay');
-        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
-    });
-
-    socket.on('force logout', () => { document.getElementById('ban-overlay').style.display = 'flex'; document.getElementById('ban-text').innerText = "ODA KAPATILDI!"; setTimeout(() => location.reload(), 2000); });
-
     socket.on('user list', data => {
-        const adminNameEl = document.getElementById('admin-display-name');
-        let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
-        if (adminUser) { adminNameEl.style.color = adminUser.color; }
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
             if(u.nick === "Keyifciyiz_Fm") return;
             const item = document.createElement('div'); item.className = 'user-item';
             const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
-            if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
-            if (myRole === 'Yönetici') {
-                box.style.cursor = "pointer";
-                box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
-            }
+            if (myRole === 'Yönetici') box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
             const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
@@ -301,12 +270,11 @@
     function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
     function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
 
-    // Şarkı listesini mikser içine bas
     document.getElementById('music-input').onchange = (e) => {
         const area = document.getElementById('playlist-area');
         area.innerHTML = "";
-        Array.from(e.target.files).slice(0,30).forEach((f, i) => {
-            area.innerHTML += `<div class="track-item"><span>${i+1}. ${f.name.slice(0,30)}</span><button class="f-btn" onclick="playTrack(${i})">ÇAL</button></div>`;
+        Array.from(e.target.files).forEach((f, i) => {
+            area.innerHTML += `<div class="track-item"><span>${f.name.slice(0,25)}</span><button class="f-btn" onclick="playTrack(${i})">ÇAL</button></div>`;
         });
     };
 </script>
