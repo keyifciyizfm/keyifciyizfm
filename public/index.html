@@ -61,19 +61,19 @@
         }
     });
 
-    // DİNLEYİCİ TARAFI
-    socket.on('playStream', (payload) => {
+    // --- DİNLEYİCİ SİSTEMİ (MEDIASOURCE - EN STABİL YÖNTEM) ---
+        socket.on('playStream', (payload) => {
         if(payload.type === 'music') {
             player.src = payload.data;
             player.play();
         }
     });
 
-    socket.on('killStream', () => { player.pause(); player.src = ""; });
-
-    player.onended = () => { if(isDJ()) play(currentIdx + 1); };
-    function isDJ() { return document.getElementById('pro-mixer').style.display === 'block'; }
-
+        mediaSource.addEventListener('sourceopen', () => {
+            sourceBuffer = mediaSource.addSourceBuffer('audio/webm; codecs="opus"');
+            sourceBuffer.addEventListener('updateend', () => {
+                if (queue.length > 0 && !sourceBuffer.updating) {
+                    sourceBuffer.appendBuffer(queue.shift());
                 }
             });
         });
