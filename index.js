@@ -16,16 +16,18 @@ let isAdminOnline = false;
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
+// GERÇEKÇİ EMOJİ MOTORU (Google Noto Emoji)
 function parseEmojis(text) {
     const emojiMap = {
-        ":smile:": "1f60a", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
+        ":smile:": "1f604", ":joy:": "1f602", ":cool:": "1f60e", ":heart:": "2764",
         ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
-        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
+        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5",
+        ":kiss:": "1f618", ":laughing:": "1f606", ":sunglasses:": "1f60e", ":clap:": "1f44f"
     };
     let newText = text;
     for (const [code, id] of Object.entries(emojiMap)) {
-        const url = `https://cdn.jsdelivr.net/gh/jakejarvis/apple-emoji-svg@master/emoji/${id}.svg`;
-        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
+        const url = `https://fonts.gstatic.com/s/e/notoemoji/latest/${id}/512.webp`;
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:24px; height:24px; vertical-align:middle; margin:0 2px;">`);
     }
     return newText;
 }
@@ -80,11 +82,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // TEMİZLEME KOMUTU
-    socket.on('clear chat', () => { 
-        if (socket.role === 'Yönetici') io.emit('chat cleared'); 
-    });
-
+    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
     socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
     socket.on('update color', (newColor) => { if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', Object.values(users)); } });
 
