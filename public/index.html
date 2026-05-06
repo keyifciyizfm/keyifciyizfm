@@ -6,30 +6,32 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
         
-        /* Container boyutu player için biraz büyütüldü */
-        #chat-container { width: 950px; height: 700px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
+        #chat-container { width: 950px; height: 700px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; }
         
-        /* --- YENİ PLAYER TASARIMI --- */
+        /* --- PLAYER PANELİ --- */
         #radio-panel { 
             background: #252525; 
-            padding: -100px 200px; 
+            padding: 10px 20px; 
             border-bottom: 2px solid #e81e4d; 
             display: flex; 
             align-items: center; 
             gap: 15px;
         }
         .player-wrapper {
-            width: 120px; height: 70px; 
+            width: 55px; height: 55px; 
             overflow: hidden; 
             position: relative; 
             border-radius: 50%; 
             border: 2px solid #e81e4d; 
             background: #000;
             flex-shrink: 0;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(232, 30, 77, 0.3);
         }
         #radio-frame {
             width: 1200px; height: 800px; 
@@ -38,25 +40,55 @@
             border: none;
             transform: scale(0.9);
         }
-        .player-text { color: #fff; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-        /* --------------------------- */
+        .player-text { color: #fff; font-size: 13px; font-weight: bold; text-shadow: 1px 1px 2px #000; transition: all 0.3s; }
 
-        #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        /* --- RİTİM TUTAN ÜST ÇİZGİ --- */
+        #top-gradient { 
+            height: 8px; 
+            width: 100%; 
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            transition: height 0.2s ease;
+        }
+
+        /* Ritim Efekti Aktifleştiğinde */
+        .playing-rhythm {
+            animation: rhythmMove 2s ease infinite, rhythmPulse 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes rhythmMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes rhythmPulse {
+            from { height: 6px; opacity: 0.7; }
+            to { height: 12px; opacity: 1; box-shadow: 0 0 15px rgba(231, 60, 126, 0.5); }
+        }
+
+        /* --- AKSİYON BAR --- */
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; outline: none; }
+        .f-btn:hover { background: #555; }
         .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
+        
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
-        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; border-radius: 4px; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; border-radius: 4px; }
+        
+        #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; border-left: 4px solid #e81e4d; }
         #admin-display-name { font-weight: bold; font-size: 15px; }
+        
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
+        .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
+
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
-        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; border-radius: 4px; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
-        .selected-nick { background-color: rgba(255, 255, 255, 0.25); padding: 2px 8px; border-radius: 4px; box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); transition: all 0.2s; }
+        .selected-nick { background-color: rgba(255, 255, 255, 0.25); padding: 2px 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -66,29 +98,35 @@
         <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
         <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
         <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..."></div>
-        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px;">BAĞLAN</button>
+        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px; background:#2ecc71; color:#000; border:none; font-weight:bold;">BAĞLAN</button>
         <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:10px; display:none;"></p>
     </div>
 </div>
 
 <div id="chat-container">
     <div id="radio-panel">
-        <div class="player-wrapper">
+        <div class="player-wrapper" id="playBtn">
             <iframe id="radio-frame" src="https://yazgulumfm.ismyradio.com/player" scrolling="no"></iframe>
         </div>
-        <div class="player-text">🎧 Radyoyu dinlemek için tıklayınız...</div>
+        <div class="player-text" id="playText">🎧 Radyoyu dinlemek için tıklayınız...</div>
     </div>
 
     <div id="top-gradient"></div>
+    
     <div id="action-bar">
         <div class="tool-group"><button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button></div>
-        <div class="tool-group"><button class="f-btn" onclick="changeFontSize(2)">A+</button><button class="f-btn" onclick="changeFontSize(-2)">A-</button></div>
+        <div class="tool-group">
+            <button class="f-btn" onclick="changeFontSize(2)">A+</button>
+            <button class="f-btn" onclick="changeFontSize(-2)">A-</button>
+        </div>
         <div class="tool-group">
             <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')">B</button>
             <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')">I</button>
             <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')">U</button>
         </div>
-        <div class="tool-group"><input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;"></div>
+        <div class="tool-group">
+            <input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;">
+        </div>
         <div class="tool-group" id="admin-tools" style="display:none;">
             <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
             <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Resim</button>
@@ -99,7 +137,7 @@
     </div>
 
     <div id="main-area">
-        <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
+        <div id="ban-overlay"><h1>🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
         <div id="messages"></div>
         <div id="user-list">
             <div id="fixed-admin">
@@ -115,7 +153,7 @@
 
     <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
         <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
-        <button type="submit" class="f-btn">GÖNDER</button>
+        <button type="submit" class="f-btn" style="background:#e81e4d; color:#fff; border:none; font-weight:bold;">GÖNDER</button>
     </form>
 </div>
 
@@ -125,6 +163,13 @@
     var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
     var privateTarget = null;
+
+    // RİTİM TETİKLEYİCİ
+    document.getElementById('playBtn').addEventListener('click', function() {
+        document.getElementById('top-gradient').classList.add('playing-rhythm');
+        document.getElementById('playText').innerText = "🎶 Yayın dinleniyor...";
+        document.getElementById('playText').style.color = "#2ecc71";
+    });
 
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
@@ -222,10 +267,7 @@
         const i = document.getElementById('input'); 
         if(i.value) { 
             const msgObj = { text: i.value, color: selectedColor, style: styles };
-            if (privateTarget) {
-                msgObj.targetId = privateTarget.id;
-                msgObj.targetNick = privateTarget.nick;
-            }
+            if (privateTarget) { msgObj.targetId = privateTarget.id; msgObj.targetNick = privateTarget.nick; }
             socket.emit('chat message', msgObj); 
             i.value = ''; 
         } 
