@@ -1,93 +1,119 @@
-let audioCtx;
-let micStream, micSource, musicSource;
-let micGain, musicGain, masterGain;
-let processor;
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
 
-// Ses sistemini başlat (Kullanıcı etkileşimiyle başlamalı)
-async function initAudioContext() {
-    if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        // Ses Ayar Düğümleri (Gains)
-        micGain = audioCtx.createGain();
-        musicGain = audioCtx.createGain();
-        masterGain = audioCtx.createGain(); // Toplam yayın sesi
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-        // Varsayılan ses seviyeleri
-        micGain.gain.value = 0; // Başlangıçta mikrofon kapalı
-        musicGain.gain.value = 0.8; 
-        
-        // İşlemci: Sesi paketleyip sunucuya göndermek için
-        processor = audioCtx.createScriptProcessor(4096, 1, 1);
-        
-        // Bağlantılar: Mic/Müzik -> Master -> Hoparlör & Yayın
-        micGain.connect(masterGain);
-        musicGain.connect(masterGain);
-        masterGain.connect(audioCtx.destination); // Kendi hoparlöründen duyman için
-        masterGain.connect(processor);
-        processor.connect(audioCtx.destination); // İşlemciyi aktif tutmak için
+app.use(express.static(path.join(__dirname, 'public')));
 
-        processor.onaudioprocess = (e) => {
-            const inputData = e.inputBuffer.getChannelData(0);
-            if (myRole === 'Yönetici' && isStreaming) {
-                // Sunucuya ses paketini gönder
-                socket.emit('audio-data', inputData.buffer);
+let users = {}; 
+let userStatus = {}; 
+let currentBackground = ""; 
+let adminCount = 0; 
+let shutdownTimer = null; 
+
+const masterNick = "Keyifciyiz_Fm";
+const masterPass = "123456";
+
+function parseEmojis(text) {
+    const emojiMap = {
+        ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
+        ":fire:": "1f525", ":rose:": "1f339", ":thumbsup:": "1f44d", ":microphone:": "1f399",
+        ":wink:": "1f609", ":star:": "2b50", ":coffee:": "2615", ":musical_note:": "1f3b5"
+    };
+    let newText = text;
+    for (const [code, id] of Object.entries(emojiMap)) {
+        const url = `https://fonts.gstatic.com/s/e/notoemoji/latest/${id}/512.webp`;
+        newText = newText.replace(new RegExp(code, 'g'), `<img src="${url}" style="width:22px; height:22px; vertical-align:middle; margin:0 2px;">`);
+    }
+    return newText;
+}
+
+io.on('connection', (socket) => {
+    socket.on('join', (data) => {
+        const isTargetAdmin = (data.nick === masterNick);
+        if (adminCount === 0 && !isTargetAdmin) {
+            return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
+        }
+        if (isTargetAdmin && data.password !== masterPass) {
+            return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
+        }
+        if (isTargetAdmin) {
+            adminCount++;
+            if (shutdownTimer) {
+                clearTimeout(shutdownTimer);
+                shutdownTimer = null;
+                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yeni yayıncı bağlandı, yayın devralındı.", color: "#2ecc71" });
             }
-        };
-    }
-}
+        }
+        socket.nick = data.nick || "Misafir";
+        socket.role = isTargetAdmin ? 'Yönetici' : 'Dinleyici';
+        socket.color = isTargetAdmin ? (data.color || '#ff4757') : '#2ecc71';
+        if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
+        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        socket.emit('status update', userStatus[socket.nick]);
+        if (currentBackground !== "") socket.emit('background changed', currentBackground);
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+    });
 
-// Müzik Yükleme ve Çalma
-document.getElementById('music-file').onchange = async function(e) {
-    await initAudioContext();
-    const file = e.target.files[0];
-    const arrayBuffer = await file.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    socket.on('update status', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        userStatus[data.target] = data.state;
+        Object.keys(users).forEach(id => {
+            if (users[id].nick === data.target) {
+                users[id].status = data.state;
+                io.to(id).emit('status update', data.state);
+            }
+        });
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+    });
 
-    if (musicSource) musicSource.stop();
-    musicSource = audioCtx.createBufferSource();
-    musicSource.buffer = audioBuffer;
-    musicSource.connect(musicGain);
-    musicSource.loop = true; // Müziği döngüye al
-    musicSource.start(0);
-};
+    socket.on('chat message', (data) => {
+        if (users[socket.id]) {
+            const u = users[socket.id];
+            if (userStatus[u.nick] === 2) return;
+            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
 
-// Mikrofonu Aç/Kapat
-async function setupMic() {
-    try {
-        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        micSource = audioCtx.createMediaStreamSource(micStream);
-        micSource.connect(micGain);
-    } catch (err) {
-        console.error("Mikrofon hatası:", err);
-    }
-}
+            if (data.targetId && socket.role === 'Yönetici') {
+                // Yöneticiye mesajın gittiğini göstermek için prefix kalsın
+                socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.targetNick}) ${u.nick}`, color: "#ff9f43" });
+                // Alıcıya mesaj giderken prefix (Sana Özel) kaldırıldı, sadece gönderen ismi görünecek
+                io.to(data.targetId).emit('chat message', { ...msgData, user: u.nick, color: "#ff9f43", isPrivate: true });
+                return;
+            }
 
-// Fader (Kaydırıcı) Kontrolleri
-document.getElementById('mic-vol').oninput = function() {
-    if (micGain) micGain.gain.value = this.value / 100;
-};
-document.getElementById('music-vol').oninput = function() {
-    if (musicGain) musicGain.gain.value = this.value / 100;
-};
+            if (userStatus[u.nick] === 1) {
+                socket.emit('chat message', msgData);
+                Object.keys(users).forEach(id => { 
+                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                });
+            } else { io.emit('chat message', msgData); }
+        }
+    });
 
-let isStreaming = false;
-async function toggleStream(start) {
-    await initAudioContext();
-    if (!micSource) await setupMic(); // Mikrofonu bir kez kur
+    socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
+    socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
+    socket.on('update color', (newColor) => { 
+        if (users[socket.id]) { users[socket.id].color = newColor; io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) }); } 
+    });
+    
+    socket.on('disconnect', () => {
+        if (users[socket.id]) {
+            if (users[socket.id].role === 'Yönetici') {
+                adminCount--;
+                if (adminCount <= 0) {
+                    adminCount = 0;
+                    shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000); 
+                }
+            }
+            delete users[socket.id];
+            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+        }
+    });
+});
 
-    const led = document.getElementById('stream-led');
-    if (start) {
-        isStreaming = true;
-        led.classList.add('led-on');
-        document.getElementById('startStream').disabled = true;
-        document.getElementById('stopStream').disabled = false;
-        socket.emit('start-broadcast');
-    } else {
-        isStreaming = false;
-        led.classList.remove('led-on');
-        document.getElementById('startStream').disabled = false;
-        document.getElementById('stopStream').disabled = true;
-        socket.emit('stop-broadcast');
-    }
-}
+server.listen(process.env.PORT || 3000);
