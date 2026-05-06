@@ -18,6 +18,14 @@ let shutdownTimer = null;
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
+// RADYO SUNUCU BİLGİLERİ
+const RADIO_CONFIG = {
+    host: 'sapircast.caster.fm',
+    port: 19788,
+    username: 'source',
+    mount: '/miu68'
+};
+
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
@@ -46,7 +54,7 @@ io.on('connection', (socket) => {
             if (shutdownTimer) {
                 clearTimeout(shutdownTimer);
                 shutdownTimer = null;
-                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yeni yayıncı bağlandı, yayın devralındı.", color: "#2ecc71" });
+                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yayıncı bağlandı, Keyifciyiz FM yayında!", color: "#2ecc71" });
             }
         }
         socket.nick = data.nick || "Misafir";
@@ -60,29 +68,14 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    socket.on('update status', (data) => {
-        if (socket.role !== 'Yönetici') return;
-        userStatus[data.target] = data.state;
-        Object.keys(users).forEach(id => {
-            if (users[id].nick === data.target) {
-                users[id].status = data.state;
-                io.to(id).emit('status update', data.state);
-            }
-        });
-        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
-    });
-
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
             if (userStatus[u.nick] === 2) return;
             const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
 
-            // ÖZEL MESAJ KONTROLÜ (DÜZENLENMİŞ)
             if (data.targetId && socket.role === 'Yönetici') {
-                // Gönderen yöneticiye giden bilgi
                 socket.emit('chat message', { ...msgData, user: `Özel -> ${data.targetNick}`, color: "#ff9f43" });
-                // Alıcıya giden mesaj (Sana Özel ibaresi kaldırıldı)
                 io.to(data.targetId).emit('chat message', { ...msgData, user: u.nick, color: "#ff9f43" });
                 return;
             }
@@ -94,6 +87,18 @@ io.on('connection', (socket) => {
                 });
             } else { io.emit('chat message', msgData); }
         }
+    });
+
+    socket.on('update status', (data) => {
+        if (socket.role !== 'Yönetici') return;
+        userStatus[data.target] = data.state;
+        Object.keys(users).forEach(id => {
+            if (users[id].nick === data.target) {
+                users[id].status = data.state;
+                io.to(id).emit('status update', data.state);
+            }
+        });
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
     socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
