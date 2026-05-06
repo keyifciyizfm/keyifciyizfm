@@ -1,215 +1,132 @@
-<h2>Radyo Chat</h2>
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+const { ShoutStreamer } = require('shoutstreamer'); // npm install shoutstreamer
 
-<input id="isim" placeholder="Adın">
-<button onclick="gir()">Giriş</button>
-
-<ul id="users"></ul>
-
-<div id="chat"></div>
-
-<input id="mesaj" placeholder="Mesaj">
-<button onclick="gonder()">Gönder</button>
-
-<script src="/socket.io/socket.io.js"></script>
-
-<script>
-const socket = io();
-let isim = "";
-
-function gir(){
-  isim = document.getElementById("isim").value;
-  socket.emit("kullanici", isim);
-}
-
-function gonder(){
-  let mesaj = document.getElementById("mesaj").value;
-  socket.emit("mesaj", isim + ": " + mesaj);
-}
-
-socket.on("mesaj", (data)=>{
-  document.getElementById("chat").innerHTML += "<p>"+data+"</p>";
-});
-
-socket.on("kullanicilar", (users)=>{
-  let html = "";
-  users.forEach(u=>{
-    html += "<li>"+u.isim+"</li>";
-  });
-  document.getElementById("users").innerHTML = html;
-});
-</script>
-`);
-[5/5 00:04] Halil Dipkaya: const express = require("express");
 const app = express();
-const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+const server = http.createServer(app);
+const io = new Server(server);
 
-let users = [];
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get("/", (req, res) => {
-  res.send(`
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Radyo Chat</title>
+// --- RADYO VE YÖNETİCİ AYARLARI ---
+const RADIO_CONFIG = {
+    host: 'sapircast.caster.fm',
+    port: 19788,
+    password: 'YAYIN_SIFRENIZ', // Buraya Caster.fm Source Password yazın
+    mount: '/stream',
+    source: 'source'
+};
 
-<style>
-body {
-  background:#0f172a;
-  color:white;
-  font-family:Arial;
-}
+const ADMIN_NICK = "Keyifciyiz_Fm";
+const ADMIN_PASS = "123456"; // Giriş ekranındaki şifreniz
 
-#chat {
-  height:300px;
-  overflow:auto;
-  border:1px solid #444;
-  padding:10px;
-  margin-bottom:10px;
-}
+let streamer = null;
+let users = {};
 
-input {
-  padding:6px;
-  margin:5px;
-}
+io.on('connection', (socket) => {
+    
+    // GİRİŞ İŞLEMİ
+    socket.on('join', (data) => {
+        const isAdmin = (data.nick === ADMIN_NICK);
+        
+        if (isAdmin && data.password !== ADMIN_PASS) {
+            return socket.emit('auth error', 'Yönetici şifresi hatalı!');
+        }
 
-button {
-  padding:6px 12px;
-  background:#22c55e;
-  border:none;
-  color:white;
-  cursor:pointer;
-}
+        socket.nick = data.nick;
+        socket.role = isAdmin ? 'Yönetici' : 'Dinleyici';
+        socket.color = isAdmin ? '#ff4757' : '#2ecc71';
+        
+        users[socket.id] = { 
+            id: socket.id, 
+            nick: socket.nick, 
+            role: socket.role, 
+            color: socket.color,
+            status: 0 
+        };
 
-#users {
-  background:#1e293b;
-  padding:10px;
-  margin-top:10px;
-}
-</style>
+        socket.emit('login success', { role: socket.role, nick: socket.nick });
+        updateUserList();
+    });
 
-</head>
+    // SES YAYIN MOTORU
+    socket.on('start-broadcast', () => {
+        if (socket.nick === ADMIN_NICK && !streamer) {
+            console.log("Radyo bağlantısı kuruluyor...");
+            streamer = new ShoutStreamer(RADIO_CONFIG);
+            streamer.connect();
+        }
+    });
 
-<body>
+    socket.on('audio-data', (data) => {
+        if (streamer && socket.nick === ADMIN_NICK) {
+            // Tarayıcıdan gelen Float32 veriyi Buffer'a çevirip gönderir
+            streamer.write(Buffer.from(data));
+        }
+    });
 
-<h2>🎧 Radyo Chat</h2>
+    socket.on('stop-broadcast', () => {
+        if (streamer) {
+            streamer.destroy();
+            streamer = null;
+            console.log("Radyo bağlantısı kesildi.");
+        }
+    });
 
-<input id="isim" placeholder="Adın">
-<button onclick="gir()">Giriş</button>
+    // MESAJLAŞMA SİSTEMİ
+    socket.on('chat message', (msg) => {
+        if (!users[socket.id]) return;
 
-<div id="chat"></div>
+        const messageData = {
+            user: users[socket.id].nick,
+            text: msg.text,
+            color: msg.color || users[socket.id].color,
+            style: msg.style
+        };
 
-<input id="mesaj" placeholder="Mesaj">
-<button onclick="gonder()">Gönder</button>
+        // Eğer özel mesajsa (Sohbet odasındaki seçme özelliği için)
+        if (msg.targetId && users[msg.targetId]) {
+            io.to(msg.targetId).emit('chat message', { ...messageData, user: `Özel: ${users[socket.id].nick}` });
+            socket.emit('chat message', { ...messageData, user: `${msg.targetNick} (Özel)` });
+        } else {
+            io.emit('chat message', messageData);
+        }
+    });
 
-<h3>👥 Online</h3>
-<ul id="users"></ul>
+    // YÖNETİCİ ARAÇLARI
+    socket.on('clear chat', () => {
+        if (socket.role === 'Yönetici') io.emit('chat cleared');
+    });
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
+    socket.on('change background', (url) => {
+        if (socket.role === 'Yönetici') io.emit('background changed', url);
+    });
 
-const socket = io();
-let isim = "";
+    socket.on('update status', (data) => {
+        if (socket.role === 'Yönetici') {
+            const targetSocket = Object.values(io.sockets.sockets).find(s => s.nick === data.target);
+            if (targetSocket) {
+                users[targetSocket.id].status = data.state;
+                targetSocket.emit('status update', data.state);
+                updateUserList();
+            }
+        }
+    });
 
-function gir(){
-  isim = document.getElementById("isim").value;
-  socket.emit("kullanici", isim);
-}
+    // KULLANICI LİSTESİ GÜNCELLEME
+    function updateUserList() {
+        io.emit('user list', { list: Object.values(users) });
+    }
 
-function gonder(){
-  let mesaj = document.getElementById("mesaj").value;
-  socket.emit("mesaj", isim + ": " + mesaj);
-}
-
-// MESAJ GÖSTER
-socket.on("mesaj", (data)=>{
-  document.getElementById("chat").innerHTML += 
-  "<div style='background:#1e293b;padding:8px;margin:5px;border-radius:10px;'>"+data+"</div>";
+    socket.on('disconnect', () => {
+        delete users[socket.id];
+        updateUserList();
+    });
 });
 
-// KULLANICI LİSTESİ
-socket.on("kullanicilar", (users)=>{
-  let html = "";
-
-  users.forEach(u=>{
-
-    let renk = "white";
-    let etiket = "";
-
-    if(u.rol == "admin"){
-      renk = "red";
-      etiket = " 👑";
-    }
-
-    if(u.rol == "dj"){
-      renk = "orange";
-      etiket = " 🎧";
-    }
-
-    if(u.canli){
-      etiket += " 🔴CANLI";
-    }
-
-    html += "<li style='color:"+renk+"'>"+u.isim+etiket+"</li>";
-  });
-
-  document.getElementById("users").innerHTML = html;
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Keyifciyiz FM ${PORT} portunda yayında...`);
 });
-
-</script>
-
-</body>
-</html>
-  `);
-});
-
-// KULLANICI GİRİŞ
-io.on("connection", (socket) => {
-
-  socket.on("kullanici", (isim) => {
-
-    let rol = "user";
-
-    if(isim.toLowerCase() == "halil"){
-      rol = "admin";
-    }
-
-    if(isim.toLowerCase() == "gamze"){
-      rol = "dj";
-    }
-
-    let user = {
-      id: socket.id,
-      isim: isim,
-      rol: rol,
-      canli: false
-    };
-
-    users.push(user);
-    io.emit("kullanicilar", users);
-  });
-
-  // MESAJ
-  socket.on("mesaj", (data) => {
-    io.emit("mesaj", data);
-  });
-
-  // DJ CANLI AÇMA
-  socket.on("canli", () => {
-    let user = users.find(u => u.id === socket.id);
-    if(user && user.rol === "dj"){
-      user.canli = true;
-      io.emit("kullanicilar", users);
-    }
-  });
-
-  // ÇIKIŞ
-  socket.on("disconnect", () => {
-    users = users.filter(u => u.id !== socket.id);
-    io.emit("kullanicilar", users);
-  });
-
-});
-
-http.listen(process.env.PORT || 3000);
