@@ -5,85 +5,78 @@
     <title>Keyifciyiz FM - Canlı Sohbet</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #121212; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
+        #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
         
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        #login-box { background: #1e1e1e; padding: 30px; border: 1px solid #333; text-align: center; border-radius: 12px; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #000; border: 1px solid #444; color: #fff; border-radius: 6px; outline: none; }
+        #chat-container { width: 950px; height: 680px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; }
         
-        #chat-container { width: 950px; height: 650px; background: #1e1e1e; border: 1px solid #333; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; }
-
-        /* RADYO PLAYER ALANI */
-        #radio-header { 
+        /* CASTER.FM PLAYER ALANI */
+        #radio-panel { 
             background: #252525; 
-            height: 65px; 
+            padding: 10px; 
+            border-bottom: 2px solid #e81e4d; 
             display: flex; 
-            align-items: center; 
-            padding: 0 20px; 
-            border-bottom: 2px solid #2ecc71; 
-            justify-content: space-between;
+            justify-content: center; 
+            align-items: center;
+            min-height: 80px;
         }
-        .player-wrapper { display: flex; align-items: center; gap: 15px; background: #1a1a1a; padding: 5px 15px; border-radius: 30px; border: 1px solid #333; }
-        #player-status { font-size: 11px; color: #2ecc71; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .cstrEmbed { width: 100%; max-width: 400px; }
 
-        #action-bar { background: #2a2a2a; padding: 10px; display: flex; align-items: center; border-bottom: 1px solid #111; gap: 5px; }
-        .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #444; }
-        .f-btn { background: #333; border: 1px solid #444; color: #eee; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 4px; transition: 0.2s; }
-        .f-btn:hover { background: #444; }
+        #top-gradient { height: 8px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
+        #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
+        .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
+        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
         .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
         
-        #main-area { display: flex; flex: 1; overflow: hidden; background: #0a0a0a; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #222; padding: 15px; overflow-y: auto; font-size: 13px; color: #eee; border-radius: 4px; background-size: cover; background-position: center; }
-        #user-list { flex: 1; background: #161616; border: 1px solid #222; padding: 12px; font-size: 12px; overflow-y: auto; border-radius: 4px; }
+        #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
+        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; border-radius: 4px; }
+        #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; border-radius: 4px; }
         
-        #fixed-admin { padding: 10px; background: #222; border: 1px solid #333; border-radius: 6px; margin-bottom: 15px; text-align: center; border-left: 4px solid #2ecc71; }
-        #admin-display-name { font-weight: bold; font-size: 14px; color: #2ecc71; }
+        #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; border-left: 4px solid #e81e4d; }
+        #admin-display-name { font-weight: bold; font-size: 15px; }
         
-        #emoji-panel { display: none; position: absolute; bottom: 70px; left: 12px; background: #2a2a2a; border: 1px solid #444; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
-        #input { flex: 1; background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 12px; outline: none; border-radius: 6px; }
-        
-        .selected-nick { background-color: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; padding: 2px 8px; border-radius: 4px; }
+        .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
+        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; border-radius: 4px; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
-        
-        /* AUDIO PLAYER STİLİ */
-        audio { height: 30px; width: 220px; filter: invert(100%) hue-rotate(90deg) brightness(1.5); }
+        .selected-nick { background-color: rgba(232, 30, 77, 0.2); padding: 2px 8px; border-radius: 4px; border: 1px solid #e81e4d; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div id="login-box">
-        <h2 style="color:#2ecc71; margin-bottom:20px;">Keyifciyiz FM</h2>
+        <h3 style="color:#e81e4d; margin-bottom:15px;">Keyifciyiz FM</h3>
         <input type="text" id="nick-input" placeholder="Nickiniz..." onkeyup="checkAdmin(this.value)">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Yönetici Şifresi"></div>
-        <button class="f-btn" onclick="joinChat()" style="width:100%; padding:12px; background:#2ecc71; color:#000; font-weight:bold; font-size:14px; border:none;">GİRİŞ YAP</button>
+        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" placeholder="Şifre..."></div>
+        <button class="f-btn" onclick="joinChat()" style="padding:10px 40px; background:#e81e4d; color:#fff; border:none; font-weight:bold;">BAĞLAN</button>
         <p id="error-msg" style="color:#ff4757; font-size:12px; margin-top:10px; display:none;"></p>
     </div>
 </div>
 
 <div id="chat-container">
-    <div id="radio-header">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <div id="player-status">Canlı Yayında</div>
-            <div class="player-wrapper">
-                <audio id="radio-player" controls preload="none">
-                    <source src="https://sapircast.caster.fm:19788/miu68" type="audio/mpeg">
-                    Tarayıcınız radyoyu desteklemiyor.
-                </audio>
-            </div>
+    <div id="radio-panel">
+        <div data-type="newStreamPlayer" data-publicToken="684f0b21-8aad-453f-8984-b5bd4a927c45" data-theme="light" data-color="e81e4d" data-channelId="" data-rendered="false" class="cstrEmbed">
+            <a href="https://www.caster.fm">Shoutcast Hosting</a>
         </div>
-        <div style="color:#555; font-size:10px;">SAPIRCAST SERVER</div>
+        <script src="//cdn.cloud.caster.fm//widgets/embed.js"></script>
     </div>
 
+    <div id="top-gradient"></div>
     <div id="action-bar">
         <div class="tool-group"><button class="f-btn" onclick="toggleEmojiPanel(event)">😊</button></div>
+        <div class="tool-group"><button class="f-btn" onclick="changeFontSize(2)">A+</button></div>
         <div class="tool-group">
             <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')">B</button>
-            <input type="color" id="colorPicker" value="#2ecc71" onchange="handleColorChange(this.value)" style="width:25px; height:20px; cursor:pointer; background:none; border:none;">
+            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')">I</button>
+            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')">U</button>
         </div>
+        <div class="tool-group"><input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;"></div>
         <div class="tool-group" id="admin-tools" style="display:none;">
-            <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
-            <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Resim</button>
+            <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹</button>
+            <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️</button>
             <input type="file" id="bg-upload" style="display:none;" onchange="uploadBg(this)">
         </div>
         <div style="flex:1;"></div>
@@ -91,69 +84,82 @@
     </div>
 
     <div id="main-area">
-        <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text">Engellendiniz!</h3></div>
+        <div id="ban-overlay"><h1>🚫</h1><h3 id="ban-text">Engellendiniz!</h3></div>
         <div id="messages"></div>
         <div id="user-list">
             <div id="fixed-admin">
-                <div style="font-size:9px; color:#888; margin-bottom:4px;">YAYINCI</div>
+                <div style="font-size:9px; color:#666; margin-bottom:4px; text-transform:uppercase;">Yayında</div>
                 <div id="admin-display-name">Keyifciyiz_Fm</div>
             </div>
-            <b style="color:#f1c40f; font-size:11px; margin-left:5px;">DİNLEYİCİLER</b>
-            <hr style="margin:8px 0; border:0; border-top:1px solid #333;">
+            <b style="color:#f1c40f">Dinleyiciler</b><hr style="margin:8px 0; border:#333 1px solid;">
             <div id="users"></div>
         </div>
     </div>
 
     <div id="emoji-panel"></div>
 
-    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:12px; background:#1e1e1e; gap:10px; border-top:1px solid #222;">
-        <input id="input" autocomplete="off" placeholder="Mesajınızı yazın..." />
-        <button type="submit" class="f-btn" style="background:#2ecc71; color:#000; border:none; padding:0 20px; font-weight:bold;">GÖNDER</button>
+    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
+        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+        <button type="submit" class="f-btn" style="background:#e81e4d; color:#fff; border:none; font-weight:bold;">GÖNDER</button>
     </form>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
     var socket = io();
-    var myNick = "", myRole = "", selectedColor = "#2ecc71";
-    var styles = { bold: false };
+    var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
+    var styles = { bold: false, italic: false, underline: false };
     var privateTarget = null;
 
+    const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
+    const panel = document.getElementById('emoji-panel');
+    emojis.forEach(e => {
+        let d = document.createElement('div');
+        d.innerHTML = `<img src="https://fonts.gstatic.com/s/e/notoemoji/latest/${e.id}/512.webp" style="width:30px;height:30px;cursor:pointer;">`;
+        d.onclick = (ev) => { ev.stopPropagation(); document.getElementById('input').value += e.c + ' '; document.getElementById('input').focus(); };
+        panel.appendChild(d);
+    });
+
+    function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
+    document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
+
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
-    
     function joinChat() {
         const n = document.getElementById('nick-input').value.trim();
         const p = document.getElementById('pass-input').value.trim();
-        if(n) {
-            socket.emit('join', { nick: n, password: p });
-            // OTOMATİK ÇALMA: Giriş yapıldığı an radyoyu başlat
-            const player = document.getElementById('radio-player');
-            player.play().catch(e => console.log("Otomatik oynatma engellendi, manuel başlatın."));
-        }
+        if(n) socket.emit('join', { nick: n, password: p });
     }
 
     socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
-    
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') document.getElementById('admin-tools').style.display = 'flex';
+        if(myRole === 'Yönetici') {
+            document.getElementById('admin-tools').style.display = 'flex';
+            selectedColor = "#ff4757"; 
+            document.getElementById('colorPicker').value = "#ff4757";
+        }
     });
 
     socket.on('chat message', d => {
         const div = document.createElement('div'); div.style.marginBottom = "8px";
         let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user.includes("Özel ->") || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
-        div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'};">${d.text}</span>`;
+        if(d.user.includes("Özel ->") || d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
+        div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    });
+
+    socket.on('status update', s => {
+        const o = document.getElementById('ban-overlay');
+        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
     });
 
     socket.on('user list', data => {
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
             if(u.nick === "Keyifciyiz_Fm") return;
-            const item = document.createElement('div'); item.style.padding = "5px";
+            const item = document.createElement('div'); item.className = 'user-item';
             const name = document.createElement('span'); 
             name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
             if (myRole === 'Yönetici') {
@@ -161,7 +167,7 @@
                 if (privateTarget && privateTarget.id === u.id) name.classList.add('selected-nick');
                 name.onclick = () => {
                     privateTarget = (privateTarget?.id === u.id) ? null : { id: u.id, nick: u.nick };
-                    document.querySelectorAll('#users span').forEach(s => s.classList.remove('selected-nick'));
+                    document.querySelectorAll('.user-item span').forEach(s => s.classList.remove('selected-nick'));
                     if(privateTarget) name.classList.add('selected-nick');
                 };
             }
@@ -171,8 +177,9 @@
 
     socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
     function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
+    function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
-    function clearChat() { socket.emit('clear chat'); }
+    function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
     function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
     
     function sendMessage(e) { 
@@ -182,12 +189,6 @@
             socket.emit('chat message', { text: i.value, color: selectedColor, style: styles, targetId: privateTarget?.id, targetNick: privateTarget?.nick }); 
             i.value = ''; 
         } 
-    }
-
-    function toggleEmojiPanel(e) {
-        e.stopPropagation();
-        const p = document.getElementById('emoji-panel');
-        p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
     }
 </script>
 </body>
