@@ -26,8 +26,15 @@
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
-        /* SEÇİLİ NİCK STİLİ */
-        .selected-nick { opacity: 0.4; filter: brightness(0.5); }
+        
+        /* ŞEFFAF BEYAZ KAPLAMA EFEKTİ */
+        .selected-nick { 
+            background-color: rgba(255, 255, 255, 0.25); /* Beyaz şeffaf kaplama */
+            padding: 2px 8px; 
+            border-radius: 4px;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.1);
+            transition: all 0.2s;
+        }
     </style>
 </head>
 <body>
@@ -159,19 +166,17 @@
             name.style.fontWeight = "bold";
             name.innerText = u.nick;
 
-            // YÖNETİCİ TIKLAMA ÖZELLİĞİ
             if (myRole === 'Yönetici') {
                 name.style.cursor = "pointer";
-                // Eğer bu kullanıcı zaten seçiliyse stili uygula
+                // Eğer bu kullanıcı seçiliyse sınıfı ekle
                 if (privateTarget && privateTarget.id === u.id) name.classList.add('selected-nick');
 
                 name.onclick = () => {
                     if (privateTarget && privateTarget.id === u.id) {
-                        // Zaten seçiliyse iptal et
                         privateTarget = null;
                         name.classList.remove('selected-nick');
                     } else {
-                        // Yeni birini seç, öncekileri temizle (opsiyonel, tek tek seçim için)
+                        // Diğer seçimleri temizle ve bunu seç
                         document.querySelectorAll('.user-item span').forEach(s => s.classList.remove('selected-nick'));
                         privateTarget = { id: u.id, nick: u.nick };
                         name.classList.add('selected-nick');
