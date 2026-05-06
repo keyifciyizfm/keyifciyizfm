@@ -1,170 +1,93 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Canlı Sohbet & Radyo Panel</title>
-    <style>
-        /* Mevcut chat stillerine ek olarak Mikser Stilleri */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+let audioCtx;
+let micStream, micSource, musicSource;
+let micGain, musicGain, masterGain;
+let processor;
+
+// Ses sistemini başlat (Kullanıcı etkileşimiyle başlamalı)
+async function initAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; z-index: 1; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; }
+        // Ses Ayar Düğümleri (Gains)
+        micGain = audioCtx.createGain();
+        musicGain = audioCtx.createGain();
+        masterGain = audioCtx.createGain(); // Toplam yayın sesi
+
+        // Varsayılan ses seviyeleri
+        micGain.gain.value = 0; // Başlangıçta mikrofon kapalı
+        musicGain.gain.value = 0.8; 
         
-        /* --- YÜZEN MİKSER STİLLERİ --- */
-        #floating-mixer {
-            position: absolute; top: 50px; left: 50px; width: 280px;
-            background: linear-gradient(145deg, #2c2c2c, #1a1a1a);
-            border: 2px solid #555; border-radius: 10px; padding: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 9999;
-            cursor: grab; display: none; /* Sadece admin görecek */
-        }
-        #floating-mixer:active { cursor: grabbing; }
-        .mixer-title { font-size: 10px; color: #f1c40f; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px; text-align: center; pointer-events: none; }
+        // İşlemci: Sesi paketleyip sunucuya göndermek için
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
         
-        .mixer-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .mixer-label { font-size: 11px; color: #eee; font-weight: bold; }
-        
-        .fader { width: 150px; height: 5px; background: #444; outline: none; -webkit-appearance: none; border-radius: 5px; }
-        .fader::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; background: #2ecc71; border-radius: 50%; cursor: pointer; border: 2px solid #fff; }
+        // Bağlantılar: Mic/Müzik -> Master -> Hoparlör & Yayın
+        micGain.connect(masterGain);
+        musicGain.connect(masterGain);
+        masterGain.connect(audioCtx.destination); // Kendi hoparlöründen duyman için
+        masterGain.connect(processor);
+        processor.connect(audioCtx.destination); // İşlemciyi aktif tutmak için
 
-        .btn-stream { padding: 8px; border-radius: 4px; border: none; font-size: 10px; font-weight: bold; cursor: pointer; flex: 1; margin: 0 5px; transition: 0.3s; }
-        .start-btn { background: #2ecc71; color: #000; }
-        .stop-btn { background: #e74c3c; color: #fff; opacity: 0.5; }
-        
-        .status-led { width: 10px; height: 10px; border-radius: 50%; background: #333; display: inline-block; margin-right: 5px; }
-        .led-on { background: #e74c3c; box-shadow: 0 0 8px #e74c3c; animation: blink 1s infinite; }
-
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-
-        /* Login ve diğer chat stilleri (öncekiyle aynı) */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 10000; }
-        #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; }
-        .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
-        .selected-nick { background-color: rgba(255, 255, 255, 0.25); padding: 2px 8px; border-radius: 4px; }
-    </style>
-</head>
-<body>
-
-<div id="floating-mixer">
-    <div class="mixer-title">🎧 BROADCAST MIXER</div>
-    
-    <div class="mixer-row">
-        <span class="mixer-label"><div id="stream-led" class="status-led"></div>YAYIN</span>
-        <div style="display:flex; flex:1;">
-            <button id="startStream" class="btn-stream start-btn" onclick="toggleStream(true)">YAYIN BAŞLAT</button>
-            <button id="stopStream" class="btn-stream stop-btn" onclick="toggleStream(false)" disabled>DURDUR</button>
-        </div>
-    </div>
-
-    <div class="mixer-row">
-        <span class="mixer-label">🎤 MİKROFON</span>
-        <input type="range" class="fader" min="0" max="100" value="0" id="mic-vol">
-    </div>
-
-    <div class="mixer-row">
-        <span class="mixer-label">🎵 MÜZİK</span>
-        <input type="range" class="fader" min="0" max="100" value="80" id="music-vol">
-    </div>
-
-    <div class="mixer-row" style="margin-top:10px;">
-        <input type="file" id="music-file" accept="audio/*" style="font-size:10px; color:#aaa; width:100%;">
-    </div>
-    
-    <div style="font-size:9px; color:#666; text-align:center;">Paneli sürükleyebilirsiniz</div>
-</div>
-
-<div id="login-overlay">
-    <div id="login-box">
-        <h3 style="color:#2ecc71; margin-bottom:15px;">Keyifciyiz FM</h3>
-        <input type="text" id="nick-input" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:#fff;" placeholder="Nickiniz...">
-        <div id="pass-area" style="display:none;"><input type="password" id="pass-input" style="width:100%; padding:10px; margin-bottom:10px; background:#222; color:#fff;" placeholder="Şifre..."></div>
-        <button class="f-btn" onclick="joinChat()" style="width:100%; padding:12px;">BAĞLAN</button>
-    </div>
-</div>
-
-<div id="chat-container">
-    <div id="messages"></div>
-    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
-        <input id="input" autocomplete="off" style="flex:1; background:#000; color:#fff; padding:10px;" placeholder="Mesaj yaz..." />
-        <button type="submit" class="f-btn">GÖNDER</button>
-    </form>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    var socket = io();
-    var myRole = "";
-
-    // SÜRÜKLEME MANTIĞI
-    const mixer = document.getElementById("floating-mixer");
-    let isDragging = false, offset = [0,0];
-    mixer.onmousedown = (e) => { 
-        isDragging = true; 
-        offset = [mixer.offsetLeft - e.clientX, mixer.offsetTop - e.clientY]; 
-    };
-    document.onmousemove = (e) => {
-        if(isDragging){
-            mixer.style.left = (e.clientX + offset[0]) + 'px';
-            mixer.style.top = (e.clientY + offset[1]) + 'px';
-        }
-    };
-    document.onmouseup = () => isDragging = false;
-
-    // LOGIN & ADMIN KONTROL
-    document.getElementById('nick-input').onkeyup = function(){
-        document.getElementById('pass-area').style.display = (this.value === "Keyifciyiz_Fm") ? "block" : "none";
-    };
-
-    function joinChat() {
-        const n = document.getElementById('nick-input').value;
-        const p = document.getElementById('pass-input').value;
-        socket.emit('join', { nick: n, password: p });
-    }
-
-    socket.on('login success', d => {
-        myRole = d.role;
-        document.getElementById('login-overlay').style.display = 'none';
-        if(myRole === 'Yönetici') {
-            document.getElementById('floating-mixer').style.display = 'block';
-        }
-    });
-
-    // YAYIN KONTROLÜ
-    function toggleStream(start) {
-        const led = document.getElementById('stream-led');
-        const startBtn = document.getElementById('startStream');
-        const stopBtn = document.getElementById('stopStream');
-
-        if(start) {
-            if(confirm("Yayın başlatılıyor, hazır mısın?")) {
-                led.classList.add('led-on');
-                startBtn.disabled = true; startBtn.style.opacity = 0.5;
-                stopBtn.disabled = false; stopBtn.style.opacity = 1;
-                socket.emit('chat message', { text: "🎙️ YAYIN BAŞLADI! Keyifli dinlemeler...", color: "#f1c40f" });
-                // Burada Web Audio API ile mikrofon bağlantısı yapılacak
+        processor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            if (myRole === 'Yönetici' && isStreaming) {
+                // Sunucuya ses paketini gönder
+                socket.emit('audio-data', inputData.buffer);
             }
-        } else {
-            led.classList.remove('led-on');
-            startBtn.disabled = false; startBtn.style.opacity = 1;
-            stopBtn.disabled = true; stopBtn.style.opacity = 0.5;
-            socket.emit('chat message', { text: "🛑 Yayın sona erdi.", color: "#e74c3c" });
-        }
+        };
     }
+}
 
-    // Chat fonksiyonları (önceki kodlarla aynı)
-    function sendMessage(e) {
-        e.preventDefault();
-        const i = document.getElementById('input');
-        if(i.value) { socket.emit('chat message', { text: i.value }); i.value = ''; }
+// Müzik Yükleme ve Çalma
+document.getElementById('music-file').onchange = async function(e) {
+    await initAudioContext();
+    const file = e.target.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    if (musicSource) musicSource.stop();
+    musicSource = audioCtx.createBufferSource();
+    musicSource.buffer = audioBuffer;
+    musicSource.connect(musicGain);
+    musicSource.loop = true; // Müziği döngüye al
+    musicSource.start(0);
+};
+
+// Mikrofonu Aç/Kapat
+async function setupMic() {
+    try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micSource = audioCtx.createMediaStreamSource(micStream);
+        micSource.connect(micGain);
+    } catch (err) {
+        console.error("Mikrofon hatası:", err);
     }
-    socket.on('chat message', d => {
-        const div = document.createElement('div');
-        div.innerHTML = `<b>${d.user || 'Sistem'}:</b> ${d.text}`;
-        document.getElementById('messages').appendChild(div);
-        document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    });
-</script>
+}
 
-</body>
-</html>
+// Fader (Kaydırıcı) Kontrolleri
+document.getElementById('mic-vol').oninput = function() {
+    if (micGain) micGain.gain.value = this.value / 100;
+};
+document.getElementById('music-vol').oninput = function() {
+    if (musicGain) musicGain.gain.value = this.value / 100;
+};
+
+let isStreaming = false;
+async function toggleStream(start) {
+    await initAudioContext();
+    if (!micSource) await setupMic(); // Mikrofonu bir kez kur
+
+    const led = document.getElementById('stream-led');
+    if (start) {
+        isStreaming = true;
+        led.classList.add('led-on');
+        document.getElementById('startStream').disabled = true;
+        document.getElementById('stopStream').disabled = false;
+        socket.emit('start-broadcast');
+    } else {
+        isStreaming = false;
+        led.classList.remove('led-on');
+        document.getElementById('startStream').disabled = false;
+        document.getElementById('stopStream').disabled = true;
+        socket.emit('stop-broadcast');
+    }
+}
