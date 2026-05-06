@@ -16,7 +16,7 @@ let adminCount = 0;
 let shutdownTimer = null; 
 
 const masterNick = "Keyifciyiz_Fm";
-const masterPass = "123456"; // Kendi şifrenle değiştirebilirsin
+const masterPass = "123456";
 
 function parseEmojis(text) {
     const emojiMap = {
@@ -88,13 +88,32 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             const u = users[socket.id];
             if (userStatus[u.nick] === 2) return;
-            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style, isMuted: (userStatus[u.nick] === 1) };
+
+            const msgData = { 
+                user: u.nick, 
+                text: parseEmojis(data.text), 
+                color: data.color || u.color, 
+                style: data.style, 
+                isMuted: (userStatus[u.nick] === 1) 
+            };
+
+            // ÖZEL MESAJ MANTIĞI
+            if (data.targetId && socket.role === 'Yönetici') {
+                // Gönderen yöneticiye kendi mesajını göster
+                socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.targetNick}) ${u.nick}`, color: "#ff9f43" });
+                // Alıcıya gönder
+                io.to(data.targetId).emit('chat message', { ...msgData, user: `(Sana Özel) ${u.nick}`, color: "#ff9f43" });
+                return;
+            }
+
             if (userStatus[u.nick] === 1) {
                 socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
                     if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
                 });
-            } else { io.emit('chat message', msgData); }
+            } else { 
+                io.emit('chat message', msgData); 
+            }
         }
     });
 
