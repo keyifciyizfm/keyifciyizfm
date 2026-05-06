@@ -24,8 +24,10 @@
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
         .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
-        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; transition: border 0.3s; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
+        /* SEÇİLİ NİCK STİLİ */
+        .selected-nick { opacity: 0.4; filter: brightness(0.5); }
     </style>
 </head>
 <body>
@@ -86,7 +88,7 @@
     var socket = io();
     var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
-    var privateTarget = null; // Özel mesaj hedefi
+    var privateTarget = null;
 
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
@@ -99,16 +101,6 @@
 
     function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
     document.addEventListener('click', (e) => { if(!panel.contains(e.target)) panel.style.display = 'none'; });
-
-    // Esc tuşuyla özel mesajdan çıkış
-    document.addEventListener('keydown', (e) => {
-        if (e.key === "Escape") {
-            privateTarget = null;
-            const i = document.getElementById('input');
-            i.placeholder = "Mesaj yaz...";
-            i.style.border = "1px solid #555";
-        }
-    });
 
     function checkAdmin(v) { document.getElementById('pass-area').style.display = (v === "Keyifciyiz_Fm") ? "block" : "none"; }
     function joinChat() {
@@ -131,7 +123,6 @@
     socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
 
     socket.on('chat message', d => {
-        if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.style.marginBottom = "8px";
         let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
         if(d.user.includes("Özel") || d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
@@ -145,23 +136,17 @@
         if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
     });
 
-    socket.on('force logout', () => { document.getElementById('ban-overlay').style.display = 'flex'; document.getElementById('ban-text').innerText = "ODA KAPATILDI!"; setTimeout(() => location.reload(), 2000); });
+    socket.on('force logout', () => { location.reload(); });
 
     socket.on('user list', data => {
         const adminNameEl = document.getElementById('admin-display-name');
         let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
-        if (adminUser) {
-            adminNameEl.style.color = adminUser.color;
-        } else {
-            adminNameEl.style.color = data.adminOnline ? "#ff4757" : "#555";
-        }
+        if (adminUser) adminNameEl.style.color = adminUser.color;
         
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
             if(u.nick === "Keyifciyiz_Fm") return;
             const item = document.createElement('div'); item.className = 'user-item';
-            
-            // Susturma/Engel kutusu
             const box = document.createElement('div'); box.className = `status-box status-${u.status || 0}`;
             if(u.status === 1) box.innerText = "/"; if(u.status === 2) box.innerText = "-";
             if (myRole === 'Yönetici') {
@@ -169,23 +154,32 @@
                 box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
             }
             
-            // Nick kısmı (Koyu renk ve Tıklama özelliği)
             const name = document.createElement('span'); 
             name.style.color = u.color; 
-            name.style.fontWeight = "bold"; // NİCK KOYU YAPILDI
+            name.style.fontWeight = "bold";
+            name.innerText = u.nick;
+
+            // YÖNETİCİ TIKLAMA ÖZELLİĞİ
             if (myRole === 'Yönetici') {
                 name.style.cursor = "pointer";
-                name.title = "Özel Mesaj Yaz";
+                // Eğer bu kullanıcı zaten seçiliyse stili uygula
+                if (privateTarget && privateTarget.id === u.id) name.classList.add('selected-nick');
+
                 name.onclick = () => {
-                    privateTarget = { id: u.id, nick: u.nick };
-                    const inp = document.getElementById('input');
-                    inp.placeholder = `Özel Mesaj: ${u.nick} (Çıkmak için ESC)`;
-                    inp.style.border = "2px solid #ff9f43";
-                    inp.focus();
+                    if (privateTarget && privateTarget.id === u.id) {
+                        // Zaten seçiliyse iptal et
+                        privateTarget = null;
+                        name.classList.remove('selected-nick');
+                    } else {
+                        // Yeni birini seç, öncekileri temizle (opsiyonel, tek tek seçim için)
+                        document.querySelectorAll('.user-item span').forEach(s => s.classList.remove('selected-nick'));
+                        privateTarget = { id: u.id, nick: u.nick };
+                        name.classList.add('selected-nick');
+                    }
+                    document.getElementById('input').focus();
                 };
             }
 
-            name.innerText = u.nick;
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
     });
@@ -202,13 +196,10 @@
         const i = document.getElementById('input'); 
         if(i.value) { 
             const msgObj = { text: i.value, color: selectedColor, style: styles };
-            
-            // Eğer özel mesaj hedefi varsa ekle
             if (privateTarget) {
                 msgObj.targetId = privateTarget.id;
                 msgObj.targetNick = privateTarget.nick;
             }
-
             socket.emit('chat message', msgObj); 
             i.value = ''; 
         } 
