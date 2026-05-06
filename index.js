@@ -78,9 +78,12 @@ io.on('connection', (socket) => {
             if (userStatus[u.nick] === 2) return;
             const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
 
+            // ÖZEL MESAJ KONTROLÜ (DÜZENLENMİŞ)
             if (data.targetId && socket.role === 'Yönetici') {
-                socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.targetNick}) ${u.nick}`, color: "#ff9f43" });
-                io.to(data.targetId).emit('chat message', { ...msgData, user: `(Sana Özel) ${u.nick}`, color: "#ff9f43" });
+                // Gönderen yöneticiye giden bilgi
+                socket.emit('chat message', { ...msgData, user: `Özel -> ${data.targetNick}`, color: "#ff9f43" });
+                // Alıcıya giden mesaj (Sana Özel ibaresi kaldırıldı)
+                io.to(data.targetId).emit('chat message', { ...msgData, user: u.nick, color: "#ff9f43" });
                 return;
             }
 
