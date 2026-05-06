@@ -1,84 +1,174 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const { ShoutStreamer } = require('shoutstreamer');
-
+const express = require("express");
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
 
-app.use(express.static(path.join(__dirname, 'public')));
+let users = [];
 
-// --- AYARLAR ---
-const RADIO_CONFIG = {
-    host: 'sapircast.caster.fm',
-    port: 19788,
-    password: 'YAYIN_SIFRENIZ', // Burayı Caster.fm şifrenle değiştir
-    mount: '/stream',
-    source: 'source'
-};
+app.get("/", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Radyo Chat</title>
 
-const MASTER_NICK = "Keyifciyiz_Fm";
-const MASTER_PASS = "123456"; // Yönetici giriş şifresi
+<style>
+body {
+  background:#0f172a;
+  color:white;
+  font-family:Arial;
+}
 
-let streamer = null;
-let activeUsers = {};
+#chat {
+  height:300px;
+  overflow:auto;
+  border:1px solid #444;
+  padding:10px;
+  margin-bottom:10px;
+}
 
-io.on('connection', (socket) => {
-    
-    // GİRİŞ
-    socket.on('join', (data) => {
-        const isAdmin = (data.nick === MASTER_NICK);
-        if (isAdmin && data.password !== MASTER_PASS) {
-            return socket.emit('chat message', { user: 'SİSTEM', text: 'Hatalı şifre!', color: 'red' });
-        }
+input {
+  padding:6px;
+  margin:5px;
+}
 
-        socket.nick = data.nick || "Misafir";
-        socket.role = isAdmin ? 'Yönetici' : 'Dinleyici';
-        socket.color = isAdmin ? '#ff4757' : '#2ecc71';
-        
-        activeUsers[socket.id] = { nick: socket.nick, role: socket.role };
-        socket.emit('login success', { role: socket.role, nick: socket.nick });
-    });
+button {
+  padding:6px 12px;
+  background:#22c55e;
+  border:none;
+  color:white;
+  cursor:pointer;
+}
 
-    // RADYO YAYIN MOTORU
-    socket.on('start-broadcast', () => {
-        if (socket.nick === MASTER_NICK && !streamer) {
-            console.log("Radyo yayını başlatılıyor...");
-            streamer = new ShoutStreamer(RADIO_CONFIG);
-            streamer.connect();
-        }
-    });
+#users {
+  background:#1e293b;
+  padding:10px;
+  margin-top:10px;
+}
+</style>
 
-    socket.on('audio-data', (data) => {
-        if (streamer && socket.nick === MASTER_NICK) {
-            // Tarayıcıdan gelen ham ses verisini (ArrayBuffer) Buffer'a çevirip basıyoruz
-            streamer.write(Buffer.from(data));
-        }
-    });
+</head>
 
-    socket.on('stop-broadcast', () => {
-        if (streamer) {
-            streamer.destroy();
-            streamer = null;
-            console.log("Yayın durduruldu.");
-        }
-    });
+<body>
 
-    // CHAT
-    socket.on('chat message', (msg) => {
-        if (activeUsers[socket.id]) {
-            io.emit('chat message', {
-                user: activeUsers[socket.id].nick,
-                text: msg.text,
-                color: socket.color
-            });
-        }
-    });
+<h2>🎧 Radyo Chat</h2>
 
-    socket.on('disconnect', () => { delete activeUsers[socket.id]; });
+<input id="isim" placeholder="Adın">
+<button onclick="gir()">Giriş</button>
+
+<div id="chat"></div>
+
+<input id="mesaj" placeholder="Mesaj">
+<button onclick="gonder()">Gönder</button>
+
+<h3>👥 Online</h3>
+<ul id="users"></ul>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+
+const socket = io();
+let isim = "";
+
+function gir(){
+  isim = document.getElementById("isim").value;
+  socket.emit("kullanici", isim);
+}
+
+function gonder(){
+  let mesaj = document.getElementById("mesaj").value;
+  socket.emit("mesaj", isim + ": " + mesaj);
+}
+
+// MESAJ GÖSTER
+socket.on("mesaj", (data)=>{
+  document.getElementById("chat").innerHTML += 
+  "<div style='background:#1e293b;padding:8px;margin:5px;border-radius:10px;'>"+data+"</div>";
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda aktif.`));
+// KULLANICI LİSTESİ
+socket.on("kullanicilar", (users)=>{
+  let html = "";
+
+  users.forEach(u=>{
+
+    let renk = "white";
+    let etiket = "";
+
+    if(u.rol == "admin"){
+      renk = "red";
+      etiket = " 👑";
+    }
+
+    if(u.rol == "dj"){
+      renk = "orange";
+      etiket = " 🎧";
+    }
+
+    if(u.canli){
+      etiket += " 🔴CANLI";
+    }
+
+    html += "<li style='color:"+renk+"'>"+u.isim+etiket+"</li>";
+  });
+
+  document.getElementById("users").innerHTML = html;
+});
+
+</script>
+
+</body>
+</html>
+  `);
+});
+
+// KULLANICI GİRİŞ
+io.on("connection", (socket) => {
+
+  socket.on("kullanici", (isim) => {
+
+    let rol = "user";
+
+    if(isim.toLowerCase() == "halil"){
+      rol = "admin";
+    }
+
+    if(isim.toLowerCase() == "gamze"){
+      rol = "dj";
+    }
+
+    let user = {
+      id: socket.id,
+      isim: isim,
+      rol: rol,
+      canli: false
+    };
+
+    users.push(user);
+    io.emit("kullanicilar", users);
+  });
+
+  // MESAJ
+  socket.on("mesaj", (data) => {
+    io.emit("mesaj", data);
+  });
+
+  // DJ CANLI AÇMA
+  socket.on("canli", () => {
+    let user = users.find(u => u.id === socket.id);
+    if(user && user.rol === "dj"){
+      user.canli = true;
+      io.emit("kullanicilar", users);
+    }
+  });
+
+  // ÇIKIŞ
+  socket.on("disconnect", () => {
+    users = users.filter(u => u.id !== socket.id);
+    io.emit("kullanicilar", users);
+  });
+
+});
+
+http.listen(process.env.PORT || 3000);
