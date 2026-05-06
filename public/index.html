@@ -6,29 +6,32 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+        
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
         
-        #chat-container { width: 950px; height: 680px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; }
+        #chat-container { width: 950px; height: 750px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; }
         
-        /* CASTER.FM PLAYER ALANI */
+        /* ÖZEL PLAYER PENCERESİ */
         #radio-panel { 
-            background: #252525; 
-            padding: 10px; 
-            border-bottom: 2px solid #e81e4d; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center;
-            min-height: 80px;
+            background: #000; 
+            width: 100%; 
+            height: 150px; /* Player'ın sığması için yükseklik */
+            border-bottom: 3px solid #e81e4d;
+            overflow: hidden;
         }
-        .cstrEmbed { width: 100%; max-width: 400px; }
+        #radio-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
 
         #top-gradient { height: 8px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
-        .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
+        .f-btn.active { background: #e81e4d !important; color: #fff; font-weight: bold; }
         
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; border-radius: 4px; }
@@ -58,10 +61,7 @@
 
 <div id="chat-container">
     <div id="radio-panel">
-        <div data-type="newStreamPlayer" data-publicToken="684f0b21-8aad-453f-8984-b5bd4a927c45" data-theme="light" data-color="e81e4d" data-channelId="" data-rendered="false" class="cstrEmbed">
-            <a href="https://www.caster.fm">Shoutcast Hosting</a>
-        </div>
-        <script src="//cdn.cloud.caster.fm//widgets/embed.js"></script>
+        <iframe id="radio-frame" src="https://yazgulumfm.ismyradio.com/player"></iframe>
     </div>
 
     <div id="top-gradient"></div>
@@ -70,8 +70,6 @@
         <div class="tool-group"><button class="f-btn" onclick="changeFontSize(2)">A+</button></div>
         <div class="tool-group">
             <button id="btn-bold" class="f-btn" onclick="toggleStyle('bold')">B</button>
-            <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')">I</button>
-            <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')">U</button>
         </div>
         <div class="tool-group"><input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;"></div>
         <div class="tool-group" id="admin-tools" style="display:none;">
@@ -111,6 +109,7 @@
     var styles = { bold: false, italic: false, underline: false };
     var privateTarget = null;
 
+    // Emoji Listesi
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
     emojis.forEach(e => {
@@ -145,14 +144,9 @@
         const div = document.createElement('div'); div.style.marginBottom = "8px";
         let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
         if(d.user.includes("Özel ->") || d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
-        div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
+        div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    });
-
-    socket.on('status update', s => {
-        const o = document.getElementById('ban-overlay');
-        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
     });
 
     socket.on('user list', data => {
