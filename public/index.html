@@ -2,173 +2,163 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Keyifciyiz FM - Pro Studio</title>
+    <title>Keyifciyiz FM - Kesintisiz Tasarım</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { background: #050505; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; overflow: hidden; }
-        
-        /* PROFESYONEL YÜZEN MIXER */
-        #pro-mixer { 
-            position: fixed; top: 20px; right: 20px; width: 320px;
-            background: linear-gradient(145deg, #222, #111); border: 1px solid #444;
-            border-radius: 8px; z-index: 9999; box-shadow: 0 20px 50px #000;
-            padding: 10px; display: none;
+        /* ANA TASARIM KODLARI (TASARIMI KORUR) */
+        body { 
+            background: #000; color: #fff; font-family: sans-serif; margin: 0; 
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
         }
-        .mixer-title { font-size: 10px; color: #e67e22; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        #playlist { height: 120px; background: #000; overflow-y: auto; list-style: none; padding: 5px; font-family: monospace; font-size: 11px; color: #00ff00; border: 1px solid #333; margin-bottom: 10px; }
-        #playlist li { padding: 4px; border-bottom: 1px solid #111; white-space: nowrap; overflow: hidden; }
-        #playlist li.active { background: #1a3a1a; color: #fff; border-left: 3px solid #e67e22; }
         
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .btn { background: #333; border: 1px solid #555; color: #fff; padding: 8px; font-size: 11px; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .btn:hover { background: #444; border-color: #e67e22; }
-        .mic-btn { background: #c0392b; grid-column: span 2; margin-top: 5px; }
-        .mic-active { background: #27ae60 !important; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        /* 1. DJ MIXER: YÜZEN PANEL (EKRANDA BAĞIMSIZ DURUR) */
+        #mixer-container { 
+            position: fixed; /* Tasarımı itmez, üzerine biner */
+            top: 80px; left: 20px; 
+            width: 260px; background: #2a2a2a; border: 2px solid #555;
+            z-index: 9999; /* Her şeyin en üstünde görünür */
+            display: none; border-radius: 5px; box-shadow: 0 0 15px #000;
+        }
+        .mixer-header { background: #444; padding: 5px; font-size: 11px; display: flex; justify-content: space-between; cursor: move; }
+        #playlist { height: 110px; background: #000; margin: 5px; overflow-y: auto; list-style: none; padding: 5px; color: #0f0; font-size: 11px; }
+        #playlist li { padding: 3px; border-bottom: 1px solid #111; }
+        #playlist li.active { background: #1a3a1a; color: white; }
+        .m-controls { padding: 5px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+        .m-btn { background: #555; border: 1px solid #777; color: white; font-size: 10px; padding: 5px; cursor: pointer; text-align: center; border-radius: 3px; }
+        .m-btn:hover { background: #e67e22; }
 
-        /* CHAT ALANI */
-        .chat-wrap { height: 100vh; display: flex; flex-direction: column; width: 100%; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; background: url('https://www.transparenttextures.com/patterns/dark-matter.png'); }
-        .msg-box { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #e67e22; max-width: 70%; }
-        .nick { font-weight: bold; color: #e67e22; font-size: 13px; display: block; margin-bottom: 5px; }
+        /* 2. CHAT AKIŞI VE NICK PANELİ (TASARIM BURADA SABİT KALIR) */
+        .header { height: 60px; background: #111; border-bottom: 2px solid #e67e22; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
+        .main-view { display: flex; flex: 1; overflow: hidden; }
+        #messages { flex: 1; overflow-y: auto; padding: 15px; }
+        .user-sidebar { width: 200px; background: #0a0a0a; border-left: 1px solid #222; }
         
-        .input-zone { background: #111; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #222; }
-        input { background: #1a1a1a; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 6px; }
+        /* MESAJ KARTLARI (GÖREMEDİĞİN NICKLER İÇİN) */
+        .chat-card { display: flex; gap: 10px; margin-bottom: 12px; background: #161616; padding: 10px; border-radius: 8px; border-left: 3px solid #e67e22; }
+        .chat-nick { font-weight: bold; color: #e67e22; display: block; margin-bottom: 3px; }
+        
+        .input-bar { height: 60px; background: #1a1a1a; display: flex; padding: 10px; gap: 10px; }
+        #m-input { flex: 1; background: #000; border: 1px solid #333; color: #fff; padding: 0 15px; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-<div id="login" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-    <h1 style="color:#e67e22">KEYİFCİYİZ FM STUDIO</h1>
-    <input type="text" id="un" placeholder="Rumuz">
-    <input type="password" id="pw" placeholder="Admin Şifresi" style="margin-top:10px;">
-    <button onclick="join()" style="margin-top:20px; padding:12px 50px; background:#e67e22; border:none; cursor:pointer; font-weight:bold;">SİSTEME GİRİŞ</button>
+<div id="login-box" style="position:fixed; inset:0; background:#000; z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <h2 style="color:#e67e22">KEYİFCİYİZ FM</h2>
+    <input type="text" id="nick" placeholder="Rumuz" style="padding:10px; margin:5px; width:220px;">
+    <input type="password" id="pass" placeholder="Admin Şifre" style="padding:10px; margin:5px; width:220px;">
+    <button onclick="giris()" style="padding:10px 30px; background:#e67e22; border:none; cursor:pointer; font-weight:bold;">BAĞLAN</button>
 </div>
 
-<div id="pro-mixer">
-    <div class="mixer-title">Master Console v2.0</div>
+<div class="header">
+    <div style="color:red; font-size:12px;">● CANLI YAYIN</div>
+    <button onclick="toggleMixer()" id="dj-panel-btn" style="display:none; background:#e67e22; color:white; border:none; padding:5px 12px; border-radius:4px; cursor:pointer;">DJ PANEL</button>
+</div>
+
+<div id="mixer-container">
+    <div class="mixer-header"><span>DJ MIXER PANEL</span> <span onclick="toggleMixer()" style="cursor:pointer">_</span></div>
     <ul id="playlist"></ul>
-    <div class="controls">
-        <label class="btn" style="text-align:center;">DOSYA YÜKLE <input type="file" id="fi" accept="audio/mp3" hidden multiple onchange="loadFiles(this)"></label>
-        <button class="btn" onclick="clearAll()">LİSTEYİ BOŞALT</button>
-        <button class="btn" onclick="startRadyo()" style="color:#27ae60">YAYINI BAŞLAT</button>
-        <button class="btn" onclick="stopRadyo()" style="color:#c0392b">YAYINI KES</button>
-        <button id="mic-btn" class="btn mic-btn" onclick="toggleMic()">MİKROFON: KAPALI</button>
+    <div class="m-controls">
+        <label class="m-btn">EKLE <input type="file" id="f-input" accept="audio/mp3" hidden multiple onchange="ekle(this)"></label>
+        <button class="m-btn" onclick="temizle()">TEMİZLE</button>
+        <button class="m-btn" onclick="yayiniAc()" style="background:#27ae60">YAYINI AÇ</button>
+        <button class="m-btn" onclick="yayiniKes()" style="background:#c0392b">KES</button>
     </div>
 </div>
 
-<div class="chat-wrap">
+<div class="main-view">
     <div id="messages"></div>
-    <div class="input-zone">
-        <input type="text" id="mi" style="flex:1" placeholder="Bir şeyler yazın..." onkeypress="if(event.key==='Enter') send()">
-        <button onclick="send()" style="background:#e67e22; padding:0 30px; border:none; font-weight:bold; cursor:pointer;">GÖNDER</button>
+    <div class="user-sidebar">
+        <div style="padding:10px; background:#e67e22; color:#000; font-weight:bold; font-size:12px; text-align:center;">ONLINE LİSTESİ</div>
+        <div id="user-list" style="padding:10px; font-size:13px;"></div>
     </div>
 </div>
 
-<audio id="radyo-audio"></audio>
+<div class="input-bar">
+    <input type="text" id="m-input" placeholder="Mesajınızı buraya yazın..." onkeypress="if(event.key==='Enter') gonder()">
+    <button onclick="gonder()" style="background:#e67e22; padding:0 20px; border:none; color:white; font-weight:bold; cursor:pointer;">GÖNDER</button>
+</div>
+
+<audio id="radyo-ses"></audio>
 
 <script>
     const socket = io();
-    let musicList = [];
-    let currentIdx = 0;
-    let micStream = null;
-    let isMicOpen = false;
-    const player = document.getElementById('radyo-audio');
+    let dosyalar = [];
+    let sira = 0;
+    const player = document.getElementById('radyo-ses');
 
-    function join() {
-        const u = document.getElementById('un').value;
-        const p = document.getElementById('pw').value;
-        if(u) socket.emit('join', { username: u, password: p });
+    function giris() {
+        const n = document.getElementById('nick').value;
+        const p = document.getElementById('pass').value;
+        if(n) socket.emit('join', { username: n, password: p });
     }
 
     socket.on('loginApproved', (user) => {
-        document.getElementById('login').style.display = 'none';
-        if(user.role === "SÜPER ADMİN") document.getElementById('pro-mixer').style.display = 'block';
+        document.getElementById('login-box').style.display = 'none';
+        if(user.role === "SÜPER ADMİN") document.getElementById('dj-panel-btn').style.display = 'block';
     });
 
-    // MIXER MÜZİK SİSTEMİ
-    function loadFiles(input) {
+    function toggleMixer() {
+        const m = document.getElementById('mixer-container');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    }
+
+    function ekle(input) {
         Array.from(input.files).forEach(f => {
-            musicList.push(f);
+            dosyalar.push(f);
             const li = document.createElement('li');
             li.innerText = f.name;
             document.getElementById('playlist').appendChild(li);
         });
     }
 
-    function startRadyo() { if(musicList.length > 0) play(0); }
+    function yayiniAc() { if(dosyalar.length > 0) cal(0); }
 
-    function play(idx) {
-        if(idx >= musicList.length) return;
-        currentIdx = idx;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            socket.emit('streamData', { type: 'music', data: e.target.result, name: musicList[idx].name });
-            updatePlaylistUI(idx);
-            // DJ kendisi de duymalı
-            player.src = e.target.result;
-            player.play();
+    function cal(index) {
+        if(index >= dosyalar.length) return;
+        sira = index;
+        const r = new FileReader();
+        r.onload = (e) => {
+            socket.emit('broadcastAudio', { audio: e.target.result, name: dosyalar[index].name });
+            const lis = document.querySelectorAll('#playlist li');
+            lis.forEach((l, i) => l.className = (i === index) ? 'active' : '');
         };
-        reader.readAsDataURL(musicList[idx]);
+        r.readAsDataURL(dosyalar[index]);
     }
 
-    function updatePlaylistUI(idx) {
-        const lis = document.querySelectorAll('#playlist li');
-        lis.forEach((li, i) => li.className = (i === idx) ? 'active' : '');
-    }
-
-    // MİKROFON SİSTEMİ
-    async function toggleMic() {
-        const btn = document.getElementById('mic-btn');
-        if(!isMicOpen) {
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                btn.innerText = "MİKROFON: AÇIK (YAYINDASIN)";
-                btn.classList.add('mic-active');
-                isMicOpen = true;
-                // Not: Gerçek mikrofon yayını için MediaRecorder veya AudioWorklet gerekir. 
-                // Burada basitleştirilmiş bir "Talkover" efekti yapıyoruz.
-                player.volume = 0.2; 
-            } catch (err) { alert("Mikrofon erişimi reddedildi!"); }
-        } else {
-            micStream.getTracks().forEach(t => t.stop());
-            btn.innerText = "MİKROFON: KAPALI";
-            btn.classList.remove('mic-active');
-            isMicOpen = false;
-            player.volume = 1.0;
-        }
-    }
-
-    // DİNLEYİCİ TARAFI
-    socket.on('playStream', (payload) => {
-        if(payload.type === 'music') {
-            player.src = payload.data;
-            player.play();
-        }
+    socket.on('playAudio', (d) => {
+        player.src = d.audio;
+        player.play();
     });
 
-    socket.on('killStream', () => { player.pause(); player.src = ""; });
+    socket.on('stopAudio', () => { player.pause(); player.src = ""; });
 
-    player.onended = () => { if(isDJ()) play(currentIdx + 1); };
-    function isDJ() { return document.getElementById('pro-mixer').style.display === 'block'; }
+    player.onended = () => { if(document.getElementById('dj-panel-btn').style.display === 'block') cal(sira + 1); };
 
-    // CHAT
-    function send() {
-        const i = document.getElementById('mi');
-        if(i.value) { socket.emit('sendMessage', { user: document.getElementById('un').value, text: i.value }); i.value = ''; }
+    function gonder() {
+        const i = document.getElementById('m-input');
+        if(i.value) { socket.emit('sendMessage', i.value); i.value = ''; }
     }
 
     socket.on('message', (m) => {
         document.getElementById('messages').innerHTML += `
-            <div class="msg-box">
-                <span class="nick">${m.user}</span>
-                <div class="text">${m.text}</div>
+            <div class="chat-card">
+                <div>
+                    <span class="chat-nick">${m.user}</span>
+                    <span style="color:#ccc; font-size:14px;">${m.text}</span>
+                </div>
             </div>`;
         document.getElementById('messages').scrollTop = 999999;
     });
 
-    function stopRadyo() { socket.emit('stopStream'); }
-    function clearAll() { musicList = []; document.getElementById('playlist').innerHTML = ''; stopRadyo(); }
+    socket.on('updateUserList', (liste) => {
+        const l = document.getElementById('user-list');
+        l.innerHTML = '';
+        liste.forEach(u => l.innerHTML += `<div>● ${u.username}</div>`);
+    });
+
+    function yayiniKes() { socket.emit('stopBroadcast'); }
+    function temizle() { dosyalar = []; document.getElementById('playlist').innerHTML = ''; yayiniKes(); }
 </script>
 </body>
 </html>
