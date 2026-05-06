@@ -18,8 +18,8 @@ app.get('/', (req, res) => { res.sendFile(__dirname + '/index.html'); });
 const radioConfig = {
     host: 'sapircast.caster.fm',
     port: 19788,
-    password: 'YAYIN_SIFRENIZI_BURAYA_YAZIN', // Caster.fm şifreni tırnak içine yaz
-    mount: '/stream',
+    password: 'VrXvDZhESO', // Caster.fm şifreni tırnak içine yaz
+    mount: '/miu68',
     source: 'source'
 };
 
