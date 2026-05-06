@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 
-// Güvenlik: Dışarıdan gömülen player'ın (iframe) sorunsuz çalışması için CSP ayarı
+// 1. DÜZELTME: Player'ın bazı tarayıcılarda engellenmemesi için güvenlik başlığı
 app.use((req, res, next) => {
     res.setHeader("Content-Security-Policy", "frame-src *;");
     next();
@@ -45,7 +45,7 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
         
-        // Yayıncı yoksa giriş engelleme
+        // 2. DÜZELTME: Yayıncı yokken girişleri engelle (Sadece yayıncı girebilir)
         if (adminCount === 0 && !isTargetAdmin) {
             return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
         }
@@ -57,10 +57,11 @@ io.on('connection', (socket) => {
 
         if (isTargetAdmin) {
             adminCount++;
+            // Eğer yayıncı kısa süreli kopup geldiyse geri sayımı durdur
             if (shutdownTimer) {
                 clearTimeout(shutdownTimer);
                 shutdownTimer = null;
-                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yeni yayıncı bağlandı, yayın devralındı.", color: "#2ecc71" });
+                io.emit('chat message', { user: "SİSTEM", text: "🎧 Yayıncı geri döndü, Keyifler yerinde!", color: "#2ecc71" });
             }
         }
 
@@ -83,6 +84,7 @@ io.on('connection', (socket) => {
         
         if (currentBackground !== "") socket.emit('background changed', currentBackground);
         
+        // AdminOnline durumunu tüm listeye gönder
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
@@ -101,7 +103,7 @@ io.on('connection', (socket) => {
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
-            if (userStatus[u.nick] === 2) return; // Engelli ise mesaj atamaz
+            if (userStatus[u.nick] === 2) return; 
 
             const msgData = { 
                 user: u.nick, 
@@ -110,14 +112,14 @@ io.on('connection', (socket) => {
                 style: data.style 
             };
 
-            // Yönetici Özel Mesaj Kontrolü
+            // Yönetici Özel Mesaj
             if (data.targetId && socket.role === 'Yönetici') {
                 socket.emit('chat message', { ...msgData, user: `Özel -> ${data.targetNick}`, color: "#ff9f43" });
                 io.to(data.targetId).emit('chat message', { ...msgData, user: u.nick, color: "#ff9f43" });
                 return;
             }
 
-            // Susturulmuş Kullanıcı Kontrolü
+            // Susturulmuş Kullanıcı
             if (userStatus[u.nick] === 1) {
                 socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
@@ -155,7 +157,7 @@ io.on('connection', (socket) => {
                 adminCount--;
                 if (adminCount <= 0) {
                     adminCount = 0;
-                    // Yönetici düştüğünde 1 dakika bekle, gelmezse herkesi at
+                    // 3. DÜZELTME: Yayıncı düştüğünde odayı kapatmak için 1 dakika bekle (Hemen herkesi atma)
                     shutdownTimer = setTimeout(() => { 
                         io.emit('force logout'); 
                         users = {}; 
@@ -169,7 +171,8 @@ io.on('connection', (socket) => {
     });
 });
 
+// Render.com gibi servisler için PORT ayarı
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Sunucu ${PORT} portunda aktif.`);
+    console.log(`Sunucu ${PORT} portunda aktif. Keyifli yayınlar!`);
 });
