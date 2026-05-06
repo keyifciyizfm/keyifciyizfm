@@ -1,129 +1,93 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
-const { ShoutStreamer } = require('shoutstreamer'); // Radyo paketi
+let audioCtx;
+let micStream, micSource, musicSource;
+let micGain, musicGain, masterGain;
+let processor;
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+// Ses sistemini başlat (Kullanıcı etkileşimiyle başlamalı)
+async function initAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Ses Ayar Düğümleri (Gains)
+        micGain = audioCtx.createGain();
+        musicGain = audioCtx.createGain();
+        masterGain = audioCtx.createGain(); // Toplam yayın sesi
 
-// Dosyaların okunacağı klasör (public klasörü varsa oraya bakar)
-app.use(express.static(path.join(__dirname, 'public')));
-// Eğer index.html ana dizindeyse üstteki satır yerine bunu kullanabilirsin:
-app.get('/', (req, res) => { res.sendFile(__dirname + '/index.html'); });
+        // Varsayılan ses seviyeleri
+        micGain.gain.value = 0; // Başlangıçta mikrofon kapalı
+        musicGain.gain.value = 0.8; 
+        
+        // İşlemci: Sesi paketleyip sunucuya göndermek için
+        processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        
+        // Bağlantılar: Mic/Müzik -> Master -> Hoparlör & Yayın
+        micGain.connect(masterGain);
+        musicGain.connect(masterGain);
+        masterGain.connect(audioCtx.destination); // Kendi hoparlöründen duyman için
+        masterGain.connect(processor);
+        processor.connect(audioCtx.destination); // İşlemciyi aktif tutmak için
 
-// --- RADYO YAYIN AYARLARI ---
-// NOT: Buradaki bilgileri kendi Caster.fm panelindeki bilgilerle kontrol et.
-const radioConfig = {
-    host: 'sapircast.caster.fm',
-    port: 19788,
-    password: 'VrXvDZhESO', // Caster.fm şifreni tırnak içine yaz
-    mount: '/miu68',
-    source: 'source'
+        processor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            if (myRole === 'Yönetici' && isStreaming) {
+                // Sunucuya ses paketini gönder
+                socket.emit('audio-data', inputData.buffer);
+            }
+        };
+    }
+}
+
+// Müzik Yükleme ve Çalma
+document.getElementById('music-file').onchange = async function(e) {
+    await initAudioContext();
+    const file = e.target.files[0];
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    if (musicSource) musicSource.stop();
+    musicSource = audioCtx.createBufferSource();
+    musicSource.buffer = audioBuffer;
+    musicSource.connect(musicGain);
+    musicSource.loop = true; // Müziği döngüye al
+    musicSource.start(0);
 };
 
-let streamer = null;
-let users = {};
-let adminCount = 0;
+// Mikrofonu Aç/Kapat
+async function setupMic() {
+    try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        micSource = audioCtx.createMediaStreamSource(micStream);
+        micSource.connect(micGain);
+    } catch (err) {
+        console.error("Mikrofon hatası:", err);
+    }
+}
 
-// Admin Bilgileri
-const masterNick = "Keyifciyiz_Fm";
-const masterPass = "123456";
+// Fader (Kaydırıcı) Kontrolleri
+document.getElementById('mic-vol').oninput = function() {
+    if (micGain) micGain.gain.value = this.value / 100;
+};
+document.getElementById('music-vol').oninput = function() {
+    if (musicGain) musicGain.gain.value = this.value / 100;
+};
 
-io.on('connection', (socket) => {
-    
-    // GİRİŞ İŞLEMİ
-    socket.on('join', (data) => {
-        const isAdmin = (data.nick === masterNick);
-        
-        if (isAdmin && data.password !== masterPass) {
-            return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
-        }
+let isStreaming = false;
+async function toggleStream(start) {
+    await initAudioContext();
+    if (!micSource) await setupMic(); // Mikrofonu bir kez kur
 
-        if (isAdmin) adminCount++;
-
-        socket.nick = data.nick || "Misafir";
-        socket.role = isAdmin ? 'Yönetici' : 'Dinleyici';
-        socket.color = isAdmin ? '#ff4757' : '#2ecc71';
-
-        users[socket.id] = { 
-            id: socket.id, 
-            nick: socket.nick, 
-            role: socket.role, 
-            color: socket.color 
-        };
-
-        socket.emit('login success', { role: socket.role, nick: socket.nick });
-        io.emit('user list', { list: Object.values(users) });
-    });
-
-    // --- RADYO YAYIN KONTROLÜ ---
-    
-    // Yayını Başlat
-    socket.on('start-broadcast', () => {
-        if (socket.role === 'Yönetici') {
-            try {
-                console.log("Radyo bağlantısı kuruluyor...");
-                streamer = new ShoutStreamer(radioConfig);
-                streamer.connect();
-                io.emit('chat message', { user: "SİSTEM", text: "🎙️ Canlı yayın başladı!", color: "#f1c40f" });
-            } catch (err) {
-                console.error("Radyo bağlantı hatası:", err);
-            }
-        }
-    });
-
-    // Ses Verisini Al ve Radyoya Gönder
-    socket.on('audio-data', (data) => {
-        if (streamer && socket.role === 'Yönetici') {
-            // Tarayıcıdan gelen Float32 array verisini Buffer'a çevirip basıyoruz
-            streamer.write(Buffer.from(data));
-        }
-    });
-
-    // Yayını Durdur
-    socket.on('stop-broadcast', () => {
-        if (streamer && socket.role === 'Yönetici') {
-            streamer.destroy();
-            streamer = null;
-            io.emit('chat message', { user: "SİSTEM", text: "🛑 Yayın sona erdi.", color: "#e74c3c" });
-        }
-    });
-
-    // MESAJLAŞMA SİSTEMİ
-    socket.on('chat message', (data) => {
-        if (users[socket.id]) {
-            const u = users[socket.id];
-            const msgData = { 
-                user: u.nick, 
-                text: data.text, 
-                color: data.color || u.color,
-                style: data.style 
-            };
-
-            // Özel Mesaj Kontrolü (Yönetici için)
-            if (data.targetId && u.role === 'Yönetici') {
-                socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.targetNick}) ${u.nick}` });
-                io.to(data.targetId).emit('chat message', { ...msgData, user: u.nick });
-            } else {
-                io.emit('chat message', msgData);
-            }
-        }
-    });
-
-    // KULLANICI AYRILDIĞINDA
-    socket.on('disconnect', () => {
-        if (users[socket.id]) {
-            if (users[socket.id].role === 'Yönetici') adminCount--;
-            delete users[socket.id];
-            io.emit('user list', { list: Object.values(users) });
-        }
-    });
-});
-
-// Port Ayarı
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
-});
+    const led = document.getElementById('stream-led');
+    if (start) {
+        isStreaming = true;
+        led.classList.add('led-on');
+        document.getElementById('startStream').disabled = true;
+        document.getElementById('stopStream').disabled = false;
+        socket.emit('start-broadcast');
+    } else {
+        isStreaming = false;
+        led.classList.remove('led-on');
+        document.getElementById('startStream').disabled = false;
+        document.getElementById('stopStream').disabled = true;
+        socket.emit('stop-broadcast');
+    }
+}
