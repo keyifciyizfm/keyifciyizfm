@@ -10,53 +10,37 @@
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
         
-        /* Container boyutu player için biraz büyütüldü */
         #chat-container { width: 950px; height: 700px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         
-        /* --- YENİ PLAYER TASARIMI --- */
-        #radio-panel { 
-            background: #252525; 
-            padding: -100px 200px; 
-            border-bottom: 2px solid #e81e4d; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px;
-        }
-        .player-wrapper {
-            width: 120px; height: 70px; 
-            overflow: hidden; 
-            position: relative; 
-            border-radius: 50%; 
-            border: 2px solid #e81e4d; 
-            background: #000;
-            flex-shrink: 0;
-        }
-        #radio-frame {
-            width: 1200px; height: 800px; 
-            position: absolute;
-            top: -145px; left: -1010px; 
-            border: none;
-            transform: scale(0.9);
-        }
+        #radio-panel { background: #252525; padding: 10px 20px; border-bottom: 2px solid #e81e4d; display: flex; align-items: center; gap: 15px; }
+        .player-wrapper { width: 120px; height: 70px; overflow: hidden; position: relative; border-radius: 50%; border: 2px solid #e81e4d; background: #000; flex-shrink: 0; }
+        #radio-frame { width: 1200px; height: 800px; position: absolute; top: -145px; left: -1010px; border: none; transform: scale(0.9); }
         .player-text { color: #fff; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-        /* --------------------------- */
 
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
         .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
+        
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
-        #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
+        
+        /* Sohbet Bölümü Kapsayıcısı */
+        #chat-section { flex: 3; display: flex; flex-direction: column; gap: 8px; position: relative; }
+        #messages { flex: 1; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
+        
+        /* MAVİ ÇİZGİ BÖLGESİ - YENİ MESAJ YAZMA ALANI */
+        #form-wrapper { background: #3b3b3b; padding: 8px; border: 1px solid #444; display: flex; gap: 5px; }
+        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
+
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; }
         #admin-display-name { font-weight: bold; font-size: 15px; }
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
-        #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
-        #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
+        #emoji-panel { display: none; position: absolute; top: 50px; left: 0; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
-        .selected-nick { background-color: rgba(255, 255, 255, 0.25); padding: 2px 8px; border-radius: 4px; box-shadow: 0 0 5px rgba(255, 255, 255, 0.1); transition: all 0.2s; }
+        .selected-nick { background-color: rgba(255, 255, 255, 0.25); padding: 2px 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -99,8 +83,19 @@
     </div>
 
     <div id="main-area">
-        <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
-        <div id="messages"></div>
+        <div id="chat-section">
+            <div id="ban-overlay"><h1 style="font-size:50px;">🚫</h1><h3 id="ban-text">Yayın Sona Erdi!</h3></div>
+            
+            <div id="emoji-panel"></div>
+
+            <form id="form-wrapper" onsubmit="sendMessage(event)">
+                <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
+                <button type="submit" class="f-btn">GÖNDER</button>
+            </form>
+
+            <div id="messages"></div>
+        </div>
+
         <div id="user-list">
             <div id="fixed-admin">
                 <div style="font-size:9px; color:#666; margin-bottom:4px; text-transform:uppercase;">Şu An Yayında</div>
@@ -110,13 +105,6 @@
             <div id="users"></div>
         </div>
     </div>
-
-    <div id="emoji-panel"></div>
-
-    <form id="form" onsubmit="sendMessage(event)" style="display:flex; padding:10px; background:#3b3b3b; gap:5px;">
-        <input id="input" autocomplete="off" placeholder="Mesaj yaz..." />
-        <button type="submit" class="f-btn">GÖNDER</button>
-    </form>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -197,12 +185,11 @@
                 name.onclick = () => {
                     if (privateTarget && privateTarget.id === u.id) {
                         privateTarget = null;
-                        name.classList.remove('selected-nick');
                     } else {
                         document.querySelectorAll('.user-item span').forEach(s => s.classList.remove('selected-nick'));
                         privateTarget = { id: u.id, nick: u.nick };
-                        name.classList.add('selected-nick');
                     }
+                    socket.emit('user list', data); 
                     document.getElementById('input').focus();
                 };
             }
@@ -222,10 +209,7 @@
         const i = document.getElementById('input'); 
         if(i.value) { 
             const msgObj = { text: i.value, color: selectedColor, style: styles };
-            if (privateTarget) {
-                msgObj.targetId = privateTarget.id;
-                msgObj.targetNick = privateTarget.nick;
-            }
+            if (privateTarget) { msgObj.targetId = privateTarget.id; msgObj.targetNick = privateTarget.nick; }
             socket.emit('chat message', msgObj); 
             i.value = ''; 
         } 
