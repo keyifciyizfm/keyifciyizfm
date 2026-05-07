@@ -79,10 +79,8 @@ io.on('connection', (socket) => {
             const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
 
             if (data.targetId && socket.role === 'Yönetici') {
-                // Yöneticiye mesajın gittiğini göstermek için prefix kalsın
                 socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.targetNick}) ${u.nick}`, color: "#ff9f43" });
-                // Alıcıya mesaj giderken prefix (Sana Özel) kaldırıldı, sadece gönderen ismi görünecek
-                io.to(data.targetId).emit('chat message', { ...msgData, user: u.nick, color: "#ff9f43", isPrivate: true });
+                io.to(data.targetId).emit('chat message', { ...msgData, user: `(Sana Özel) ${u.nick}`, color: "#ff9f43" });
                 return;
             }
 
