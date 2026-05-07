@@ -26,10 +26,6 @@
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
-        
-        /* SEÇİLİ NİCK STİLİ VE İŞARETİ */
-        .selected-nick { opacity: 0.5; position: relative; }
-        .selected-nick::before { content: "💬"; margin-right: 5px; font-size: 10px; opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -90,7 +86,6 @@
     var socket = io();
     var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71";
     var styles = { bold: false, italic: false, underline: false };
-    var privateTarget = null;
 
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
     const panel = document.getElementById('emoji-panel');
@@ -125,9 +120,10 @@
     socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
 
     socket.on('chat message', d => {
+        if (d.isMuted && myRole !== 'Yönetici' && d.user !== myNick) return;
         const div = document.createElement('div'); div.style.marginBottom = "8px";
         let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user.includes("Özel") || d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
+        if(d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
         div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
@@ -138,12 +134,16 @@
         if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
     });
 
-    socket.on('force logout', () => { location.reload(); });
+    socket.on('force logout', () => { document.getElementById('ban-overlay').style.display = 'flex'; document.getElementById('ban-text').innerText = "ODA KAPATILDI!"; setTimeout(() => location.reload(), 2000); });
 
     socket.on('user list', data => {
         const adminNameEl = document.getElementById('admin-display-name');
         let adminUser = data.list.find(u => u.nick === "Keyifciyiz_Fm");
-        if (adminUser) adminNameEl.style.color = adminUser.color;
+        if (adminUser) {
+            adminNameEl.style.color = adminUser.color;
+        } else {
+            adminNameEl.style.color = data.adminOnline ? "#ff4757" : "#555";
+        }
         
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
@@ -155,29 +155,7 @@
                 box.style.cursor = "pointer";
                 box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
             }
-            
-            const name = document.createElement('span'); 
-            name.style.color = u.color; 
-            name.style.fontWeight = "bold";
-            name.innerText = u.nick;
-
-            if (myRole === 'Yönetici') {
-                name.style.cursor = "pointer";
-                if (privateTarget && privateTarget.id === u.id) name.classList.add('selected-nick');
-
-                name.onclick = () => {
-                    if (privateTarget && privateTarget.id === u.id) {
-                        privateTarget = null;
-                        name.classList.remove('selected-nick');
-                    } else {
-                        document.querySelectorAll('.user-item span').forEach(s => s.classList.remove('selected-nick'));
-                        privateTarget = { id: u.id, nick: u.nick };
-                        name.classList.add('selected-nick');
-                    }
-                    document.getElementById('input').focus();
-                };
-            }
-
+            const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
     });
@@ -188,20 +166,7 @@
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
     function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
-    
-    function sendMessage(e) { 
-        e.preventDefault(); 
-        const i = document.getElementById('input'); 
-        if(i.value) { 
-            const msgObj = { text: i.value, color: selectedColor, style: styles };
-            if (privateTarget) {
-                msgObj.targetId = privateTarget.id;
-                msgObj.targetNick = privateTarget.nick;
-            }
-            socket.emit('chat message', msgObj); 
-            i.value = ''; 
-        } 
-    }
+    function sendMessage(e) { e.preventDefault(); const i = document.getElementById('input'); if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles }); i.value = ''; } }
 </script>
 </body>
 </html>
