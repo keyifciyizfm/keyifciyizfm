@@ -9,38 +9,7 @@
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        
-        /* Container boyutu player için biraz büyütüldü */
-        #chat-container { width: 950px; height: 700px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
-        
-        /* --- YENİ PLAYER TASARIMI --- */
-        #radio-panel { 
-            background: #252525; 
-            padding: 10px 20px; 
-            border-bottom: 2px solid #e81e4d; 
-            display: flex; 
-            align-items: center; 
-            gap: 15px;
-        }
-        .player-wrapper {
-            width: 50px; height: 50px; 
-            overflow: hidden; 
-            position: relative; 
-            border-radius: 50%; 
-            border: 2px solid #e81e4d; 
-            background: #000;
-            flex-shrink: 0;
-        }
-        #radio-frame {
-            width: 1200px; height: 800px; 
-            position: absolute;
-            top: -310px; left: -575px; 
-            border: none;
-            transform: scale(0.9);
-        }
-        .player-text { color: #fff; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-        /* --------------------------- */
-
+        #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
@@ -53,6 +22,7 @@
         #admin-display-name { font-weight: bold; font-size: 15px; }
         .user-item { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #222; gap: 8px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
+        .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
@@ -72,13 +42,6 @@
 </div>
 
 <div id="chat-container">
-    <div id="radio-panel">
-        <div class="player-wrapper">
-            <iframe id="radio-frame" src="https://yazgulumfm.ismyradio.com/player" scrolling="no"></iframe>
-        </div>
-        <div class="player-text">🎧 Radyoyu dinlemek için tıklayınız...</div>
-    </div>
-
     <div id="top-gradient"></div>
     <div id="action-bar">
         <div class="tool-group"><button class="f-btn" onclick="toggleEmojiPanel(event)">😊 Emojiler</button></div>
@@ -158,10 +121,17 @@
 
     socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; font-style:italic; padding:10px;">✨ Sohbet temizlendi ✨</div>'; });
 
+    // MESAJLARI EKRANA BASAN KISIM (GÜNCELLEME YAPILDI)
     socket.on('chat message', d => {
         const div = document.createElement('div'); div.style.marginBottom = "8px";
+        
         let prefix = `<b style="color:${d.color}">${d.user}:</b>`;
-        if(d.user.includes("Özel ->") || d.user === "BİLGİ" || d.user === "SİSTEM") prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
+        
+        // Eğer kullanıcı adı içinde "Özel ->" geçiyorsa veya SİSTEM/BİLGİ ise köşeli paranteze al
+        if(d.user.includes("Özel ->") || d.user === "BİLGİ" || d.user === "SİSTEM") {
+            prefix = `<b style="color:${d.color}">[${d.user}]</b>`;
+        }
+        
         div.innerHTML = `${prefix} <span style="color:${d.color}; font-weight:${d.style?.bold?'bold':'normal'}; font-style:${d.style?.italic?'italic':'normal'}; text-decoration:${d.style?.underline?'underline':'none'};">${d.text}</span>`;
         document.getElementById('messages').appendChild(div);
         document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
@@ -189,11 +159,16 @@
                 box.style.cursor = "pointer";
                 box.onclick = () => socket.emit('update status', { target: u.nick, state: ((u.status || 0) + 1) % 3 });
             }
+            
             const name = document.createElement('span'); 
-            name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
+            name.style.color = u.color; 
+            name.style.fontWeight = "bold";
+            name.innerText = u.nick;
+
             if (myRole === 'Yönetici') {
                 name.style.cursor = "pointer";
                 if (privateTarget && privateTarget.id === u.id) name.classList.add('selected-nick');
+
                 name.onclick = () => {
                     if (privateTarget && privateTarget.id === u.id) {
                         privateTarget = null;
@@ -206,6 +181,7 @@
                     document.getElementById('input').focus();
                 };
             }
+
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
     });
