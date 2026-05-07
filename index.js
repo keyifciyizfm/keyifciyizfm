@@ -15,10 +15,11 @@ let currentBackground = "";
 let adminCount = 0; 
 let shutdownTimer = null; 
 
+// Yönetici Bilgileri
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
 
-// EMOJİ PARSER
+// Emoji Çözümleyici
 function parseEmojis(text) {
     const emojiMap = {
         ":smile:": "1f604", ":joy:": "1f602", ":kiss:": "1f618", ":heart:": "2764",
@@ -37,10 +38,12 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
         
+        // Yayıncı yoksa girişi engelle
         if (adminCount === 0 && !isTargetAdmin) {
             return socket.emit('auth error', 'Yayıncı şu an yayında değil, oda kapalı!');
         }
         
+        // Admin şifre kontrolü
         if (isTargetAdmin && data.password !== masterPass) {
             return socket.emit('auth error', 'Hatalı Yönetici Şifresi!');
         }
@@ -59,11 +62,20 @@ io.on('connection', (socket) => {
         socket.color = isTargetAdmin ? (data.color || '#ff4757') : '#2ecc71';
         
         if (userStatus[socket.nick] === undefined) userStatus[socket.nick] = 0;
-        users[socket.id] = { id: socket.id, nick: socket.nick, role: socket.role, color: socket.color, status: userStatus[socket.nick] };
+        
+        users[socket.id] = { 
+            id: socket.id, 
+            nick: socket.nick, 
+            role: socket.role, 
+            color: socket.color, 
+            status: userStatus[socket.nick] 
+        };
         
         socket.emit('login success', { role: socket.role, nick: socket.nick });
         socket.emit('status update', userStatus[socket.nick]);
+        
         if (currentBackground !== "") socket.emit('background changed', currentBackground);
+        
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
@@ -71,7 +83,7 @@ io.on('connection', (socket) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
         
-        // SUSTURMA UYARISI BURADA
+        // Durum mesajları
         let statusMsg = (data.state === 1) ? `🔇 Susturuldunuz!` : (data.state === 0 ? `✅ Sohbete devam edebilirsiniz.` : "");
         
         Object.keys(users).forEach(id => {
@@ -89,14 +101,35 @@ io.on('connection', (socket) => {
     socket.on('chat message', (data) => {
         if (users[socket.id]) {
             const u = users[socket.id];
-            if (userStatus[u.nick] === 2) return;
-            const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style, isMuted: (userStatus[u.nick] === 1) };
+            if (userStatus[u.nick] === 2) return; // Engelli kontrolü
+
+            const msgData = { 
+                user: u.nick, 
+                text: parseEmojis(data.text), 
+                color: data.color || u.color, 
+                style: data.style 
+            };
+
+            // ÖZEL MESAJ (PM) MANTIĞI
+            if (data.targetId && socket.role === 'Yönetici') {
+                // Gönderen yöneticiye göster
+                socket.emit('chat message', { ...msgData, user: `Fisilti -> ${data.targetNick}`, color: "#ffffff" });
+                // Sadece hedefe gönder
+                io.to(data.targetId).emit('chat message', { ...msgData, user: `${u.nick} (Özel)`, color: "#ffffff" });
+                return;
+            }
+
+            // Susturulmuş kullanıcı kontrolü
             if (userStatus[u.nick] === 1) {
                 socket.emit('chat message', msgData);
                 Object.keys(users).forEach(id => { 
-                    if (users[id].role === 'Yönetici' && id !== socket.id) io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                    if (users[id].role === 'Yönetici' && id !== socket.id) {
+                        io.to(id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                    }
                 });
-            } else { io.emit('chat message', msgData); }
+            } else { 
+                io.emit('chat message', msgData); 
+            }
         }
     });
 
@@ -121,7 +154,7 @@ io.on('connection', (socket) => {
                         io.emit('force logout'); 
                         users = {};
                         adminCount = 0;
-                    }, 60000); 
+                    }, 60000); // 1 dakika bekleme süresi
                 }
             }
             delete users[socket.id];
@@ -130,4 +163,5 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Sunucu ${PORT} portunda aktif.`));
