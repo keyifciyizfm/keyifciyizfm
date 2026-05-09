@@ -35,18 +35,12 @@ function parseEmojis(text) {
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
-        
-        // Yönetici yoksa ve giren kişi yönetici değilse reddet
         if (adminCount === 0 && !isTargetAdmin) return socket.emit('auth error', 'Yayıncı şu an yayında değil!');
         if (isTargetAdmin && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
         
-        // Yönetici girerse 60 saniye kuralını durdur
         if (isTargetAdmin) {
             adminCount++;
-            if (shutdownTimer) { 
-                clearTimeout(shutdownTimer); 
-                shutdownTimer = null; 
-            }
+            if (shutdownTimer) { clearTimeout(shutdownTimer); shutdownTimer = null; }
         }
         
         socket.nick = data.nick;
@@ -62,12 +56,10 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    // RENK GÜNCELLEME SİSTEMİ (Kesin Çözüm)
     socket.on('update color', (newColor) => {
         if (users[socket.id]) {
             users[socket.id].color = newColor;
             socket.color = newColor;
-            // Listeyi herkese gönder ki ismin rengi değişsin
             io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
         }
     });
@@ -86,7 +78,6 @@ io.on('connection', (socket) => {
             target: data.target 
         };
 
-        // Özel Mesaj (Yöneticiye gider)
         if (data.target && u.role === 'Yönetici') {
             const targetSocket = Object.values(users).find(usr => usr.nick === data.target);
             if (targetSocket) {
@@ -96,7 +87,6 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Susturulmuş Kullanıcı
         if (currentStatus === 1) {
             socket.emit('chat message', msgData);
             Object.values(users).forEach(usr => { 
@@ -112,22 +102,17 @@ io.on('connection', (socket) => {
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         const oldStatus = userStatus[data.target];
-        const newStatus = data.state;
-        userStatus[data.target] = newStatus;
-
+        userStatus[data.target] = data.state;
+        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
-                users[id].status = newStatus;
-                
-                // Susturulma Bildirimi
-                if (newStatus === 1) {
+                users[id].status = data.state;
+                if (data.state === 1) {
                     io.to(id).emit('chat message', { user: "BİLGİ", text: "⚠️ Susturuldunuz!", color: "#f1c40f", style: { bold: true } });
-                } 
-                // Susturma Kaldırılma Bildirimi (DÜZELTİLDİ)
-                else if (oldStatus === 1 && newStatus === 0) {
+                } else if (oldStatus === 1 && data.state === 0) {
                     io.to(id).emit('chat message', { user: "BİLGİ", text: "✅ Sohbete devam edebilirsiniz!", color: "#2ecc71", style: { bold: true } });
                 }
-                io.to(id).emit('status update', newStatus);
+                io.to(id).emit('status update', data.state);
             }
         });
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
@@ -140,14 +125,7 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             if (users[socket.id].role === 'Yönetici') {
                 adminCount--;
-                // 60 SANİYE KURALI BURADA
-                if (adminCount <= 0) {
-                    shutdownTimer = setTimeout(() => { 
-                        io.emit('force logout'); 
-                        users = {}; 
-                        adminCount = 0; 
-                    }, 60000);
-                }
+                if (adminCount <= 0) shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000);
             }
             delete users[socket.id];
             io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
@@ -155,4 +133,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log("Sunucu 3000 portunda aktif."));
+server.listen(3000);
