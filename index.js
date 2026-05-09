@@ -56,10 +56,17 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
+    socket.on('update color', (color) => {
+        if (users[socket.id]) {
+            users[socket.id].color = color;
+            socket.color = color;
+            io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+        }
+    });
+
     socket.on('chat message', (data) => {
         const u = users[socket.id];
         if (!u) return;
-
         const currentStatus = userStatus[u.nick] || 0;
         if (currentStatus === 2) return;
 
@@ -71,7 +78,6 @@ io.on('connection', (socket) => {
             target: data.target 
         };
 
-        // ÖZEL MESAJ (YÖNETİCİ MODU)
         if (data.target && u.role === 'Yönetici') {
             const targetSocket = Object.values(users).find(usr => usr.nick === data.target);
             if (targetSocket) {
@@ -81,32 +87,29 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // SUSTURULAN KULLANICI MANTIĞI
         if (currentStatus === 1) {
-            // Sadece kendisine gönder
             socket.emit('chat message', msgData);
-            // Sadece yöneticiye "(Susturuldu)" notuyla gönder
             Object.values(users).forEach(usr => { 
                 if (usr.role === 'Yönetici' && usr.id !== socket.id) {
                     io.to(usr.id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
                 }
             });
         } else {
-            // Normal kullanıcı mesajı herkese gider
             io.emit('chat message', msgData);
         }
     });
 
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
+        const oldStatus = userStatus[data.target];
         userStatus[data.target] = data.state;
-        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
                 users[id].status = data.state;
-                // Sadece susturulan kişiye özel uyarı gönder
                 if (data.state === 1) {
-                    io.to(id).emit('chat message', { user: "BİLGİ", text: "⚠️ Susturuldunuz! Mesajlarınız sadece yöneticiye iletilir.", color: "#f1c40f", style: { bold: true } });
+                    io.to(id).emit('chat message', { user: "BİLGİ", text: "⚠️ Susturuldunuz!", color: "#f1c40f", style: { bold: true } });
+                } else if (oldStatus === 1 && data.state === 0) {
+                    io.to(id).emit('chat message', { user: "BİLGİ", text: "✅ Sohbete devam edebilirsiniz!", color: "#2ecc71", style: { bold: true } });
                 }
                 io.to(id).emit('status update', data.state);
             }
@@ -114,10 +117,7 @@ io.on('connection', (socket) => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
-    socket.on('refresh list', () => {
-        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
-    });
-
+    socket.on('refresh list', () => { io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) }); });
     socket.on('clear chat', () => { if (socket.role === 'Yönetici') io.emit('chat cleared'); });
     socket.on('change background', (url) => { if (socket.role === 'Yönetici') { currentBackground = url; io.emit('background changed', url); } });
     
@@ -125,9 +125,7 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             if (users[socket.id].role === 'Yönetici') {
                 adminCount--;
-                if (adminCount <= 0) {
-                    shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000);
-                }
+                if (adminCount <= 0) shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000);
             }
             delete users[socket.id];
             io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
