@@ -14,7 +14,7 @@ let userStatus = {};
 let currentBackground = ""; 
 let adminCount = 0; 
 let shutdownTimer = null; 
-let isPrivateFeatureOpen = false; // Herkesin özel mesaj atabilme özelliği
+let isPrivateFeatureOpen = false; 
 
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
@@ -77,18 +77,10 @@ io.on('connection', (socket) => {
         const u = users[socket.id];
         if (!u || userStatus[u.nick] === 2) return;
 
-        const msgData = { 
-            user: u.nick, 
-            text: parseEmojis(data.text), 
-            color: data.color || u.color, 
-            style: data.style
-        };
+        const msgData = { user: u.nick, text: parseEmojis(data.text), color: data.color || u.color, style: data.style };
 
-        // ÖZEL MESAJ GÖNDERİMİ
         if (data.target) {
-            // Eğer özellik kapalıysa ve gönderen yönetici değilse engelle
             if (!isPrivateFeatureOpen && u.role !== 'Yönetici') return;
-
             const targetSocket = Object.values(users).find(usr => usr.nick === data.target);
             if (targetSocket) {
                 socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.target}) ${u.nick}` }); 
@@ -97,13 +89,10 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // GENEL MESAJ (Susturulmuşsa sadece yöneticiye)
         if (userStatus[u.nick] === 1 && u.role !== 'Yönetici') {
             socket.emit('chat message', msgData);
             Object.values(users).forEach(usr => { 
-                if (usr.role === 'Yönetici' && usr.id !== socket.id) {
-                    io.to(usr.id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
-                }
+                if (usr.role === 'Yönetici' && usr.id !== socket.id) io.to(usr.id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
             });
         } else {
             io.emit('chat message', msgData);
