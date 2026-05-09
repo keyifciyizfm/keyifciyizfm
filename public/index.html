@@ -21,10 +21,8 @@
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
         
-        /* Şeffaf Kutu ve Seçim Efekti */
         .user-item { display: flex; align-items: center; padding: 6px 8px; border-bottom: 1px solid #222; gap: 8px; border-radius: 4px; transition: 0.2s; }
         .user-item.can-click { cursor: pointer; }
-        .user-item.can-click:hover { background: rgba(255, 255, 255, 0.05); }
         .user-item.selected { background: rgba(255, 255, 255, 0.15) !important; border: 1px solid rgba(255, 255, 255, 0.3); }
         
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
@@ -99,7 +97,7 @@
     var socket = io();
     var myNick = "", myRole = "", currentFontSize = 13, selectedColor = "#2ecc71", privateTarget = null;
     var styles = { bold: false, italic: false, underline: false };
-    var isPrivateOpen = false; // Özellik durumu
+    var isPrivateOpen = false;
 
     const panel = document.getElementById('emoji-panel');
     const emojis = [{c:':smile:',id:'1f604'},{c:':joy:',id:'1f602'},{c:':kiss:',id:'1f618'},{c:':heart:',id:'2764'},{c:':fire:',id:'1f525'},{c:':rose:',id:'1f339'},{c:':thumbsup:',id:'1f44d'},{c:':microphone:',id:'1f399'},{c:':coffee:',id:'2615'},{c:':musical_note:',id:'1f3b5'},{c:':star:',id:'2b50'}];
@@ -139,13 +137,19 @@
         } else {
             btn.innerHTML = "🔓 Özel Sohbet: KAPALI";
             btn.classList.remove('active');
-            // Özellik kapandıysa seçili hedefi sıfırla (yönetici değilse)
             if(myRole !== 'Yönetici') {
                 privateTarget = null;
                 document.getElementById('input').placeholder = "Mesaj yaz...";
             }
         }
-        socket.emit('refresh list'); // Listeyi tekrar çizdir
+        // Sayfa üzerinde listeyi güncellemek için sunucudan liste istemeye gerek yok, user list zaten periyodik geliyor veya aksiyonla tetikleniyor. 
+        // Ancak anlık görsel değişiklik için mevcut DOM'u güncelleyebiliriz.
+        document.querySelectorAll('.user-item').forEach(item => {
+           if(myRole !== 'Yönetici' && !isPrivateOpen) {
+               item.classList.remove('can-click', 'selected');
+               item.onclick = null;
+           }
+        });
     });
 
     socket.on('chat message', d => {
@@ -165,7 +169,7 @@
             const item = document.createElement('div'); 
             item.className = 'user-item' + (privateTarget === u.nick ? ' selected' : '');
             
-            // Tıklanabilirlik kuralı: Ya yöneticiyimdir ya da özellik açıktır
+            // SADECE YÖNETİCİ VEYA ÖZELLİK AÇIKSA TIKLANABİLİR
             if(myRole === 'Yönetici' || isPrivateOpen) {
                 item.classList.add('can-click');
                 item.onclick = () => {
@@ -194,7 +198,6 @@
     socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
     socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = ''; });
     socket.on('auth error', m => { alert(m); });
-    socket.on('refresh list', () => { /* listenin güncellenmesi socket.on('user list') ile sağlanıyor */ });
 
     function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
