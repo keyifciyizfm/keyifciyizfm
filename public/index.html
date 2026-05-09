@@ -6,43 +6,30 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #1a1a1a; font-family: 'Verdana', sans-serif; color: #ccc; height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        
-        /* Login */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
         #login-box { background: #333; padding: 30px; border: 2px solid #555; text-align: center; border-radius: 8px; width: 320px; box-shadow: 0 0 20px #000; }
         #nick-input, #pass-input { width: 100%; padding: 12px; margin-bottom: 12px; background: #222; border: 1px solid #444; color: #fff; border-radius: 4px; outline: none; }
-        
-        /* Main Layout */
         #chat-container { width: 950px; height: 620px; background: #3b3b3b; border: 2px solid #444; display: flex; flex-direction: column; position: relative; }
         #top-gradient { height: 15px; width: 100%; background: linear-gradient(to right, #2ecc71, #f1c40f, #e74c3c); }
-        
-        /* Action Bar */
         #action-bar { background: #4a4a4a; padding: 10px; display: flex; align-items: center; border-bottom: 2px solid #222; z-index: 500; }
         .tool-group { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-right: 1px solid #555; height: 25px; }
         .f-btn { background: linear-gradient(to bottom, #777, #333); border: 1px solid #111; color: #fff; padding: 5px 12px; font-size: 11px; cursor: pointer; border-radius: 3px; }
         .f-btn.active { background: #2ecc71 !important; color: #000; font-weight: bold; }
         .color-trigger { font-size: 11px; color: #fff; cursor: pointer; font-weight: bold; padding: 5px 8px; border: 1px solid #555; border-radius: 3px; background: #333; }
-        
-        /* Chat Area */
         #main-area { display: flex; flex: 1; overflow: hidden; background: #222; padding: 8px; gap: 8px; }
         #messages { flex: 3; background: #000; border: 1px solid #444; padding: 12px; overflow-y: auto; font-size: 13px; color: #fff; background-size: cover; background-position: center; }
-        
-        /* User List & Selection Effect */
         #user-list { flex: 1; background: #111; border: 1px solid #444; padding: 12px; font-size: 12px; overflow-y: auto; }
-        .user-item { display: flex; align-items: center; padding: 8px 10px; border-bottom: 1px solid #222; gap: 10px; cursor: pointer; transition: background 0.2s; border-radius: 4px; margin-bottom: 2px; }
         
-        /* DÜZELTME: Seçili nick üzerindeki beyaz şeffaf kutu */
+        /* Kullanıcı Öğesi ve Beyaz Şeffaf Kutucuk */
+        .user-item { display: flex; align-items: center; padding: 8px 10px; border-bottom: 1px solid #222; gap: 10px; cursor: pointer; border-radius: 4px; transition: background 0.2s; margin-bottom: 2px; }
         .user-item.selected { 
             background: rgba(255, 255, 255, 0.15); 
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.1);
         }
-        
-        .user-item:hover:not(.selected) { background: rgba(255, 255, 255, 0.05); }
 
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; flex-shrink: 0; }
         .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
-
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
@@ -118,11 +105,7 @@
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') { 
-            document.getElementById('admin-tools').style.display = 'flex'; 
-            selectedColor = "#ff4757"; 
-            document.getElementById('colorPicker').value = "#ff4757";
-        }
+        if(myRole === 'Yönetici') { document.getElementById('admin-tools').style.display = 'flex'; selectedColor = "#ff4757"; }
     });
 
     socket.on('chat message', d => {
@@ -136,21 +119,15 @@
     socket.on('user list', data => {
         const uDiv = document.getElementById('users'); uDiv.innerHTML = '';
         data.list.forEach(u => {
-            if(u.nick === "Keyifciyiz_Fm") {
-                document.getElementById('admin-display-nick').style.color = u.color;
-                return;
-            }
+            if(u.nick === "Keyifciyiz_Fm") { document.getElementById('admin-display-nick').style.color = u.color; return; }
             const item = document.createElement('div'); 
-            // Nick seçili mi kontrol et ve sınıfı ekle
             item.className = 'user-item' + (privateTarget === u.nick ? ' selected' : '');
             
-            // Nicke tıklama olayı
             item.onclick = () => { 
                 if(myRole === 'Yönetici') { 
                     privateTarget = (privateTarget === u.nick) ? null : u.nick; 
                     document.getElementById('input').placeholder = privateTarget ? u.nick + " özel..." : "Mesaj yaz...";
-                    
-                    // Arayüzü hemen güncellemek için tüm öğelerden seçimi kaldır, buna ekle
+                    // Kutucuğu görsel olarak güncelle
                     document.querySelectorAll('.user-item').forEach(el => el.classList.remove('selected'));
                     if(privateTarget) item.classList.add('selected');
                 } 
@@ -167,11 +144,16 @@
 
     socket.on('status update', s => {
         const o = document.getElementById('ban-overlay');
-        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } 
-        else { o.style.display = 'none'; }
+        if(s === 2) { o.style.display = 'flex'; document.getElementById('ban-text').innerText = "ENGELLENDİNİZ!"; } else { o.style.display = 'none'; }
     });
 
-    socket.on('force logout', () => { location.reload(); });
+    socket.on('force logout', () => { 
+        document.getElementById('ban-overlay').style.display = 'flex'; 
+        document.getElementById('ban-text').innerText = "YAYIN SONA ERDİ!"; 
+        setTimeout(() => location.reload(), 2000); 
+    });
+
+    socket.on('auth error', m => { const e = document.getElementById('error-msg'); e.innerText = m; e.style.display = "block"; });
     socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = ''; });
     socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
 
@@ -184,10 +166,7 @@
     function sendMessage(e) { 
         e.preventDefault(); 
         const i = document.getElementById('input'); 
-        if(i.value) { 
-            socket.emit('chat message', { text: i.value, color: selectedColor, style: styles, target: privateTarget }); 
-            i.value = ''; 
-        } 
+        if(i.value) { socket.emit('chat message', { text: i.value, color: selectedColor, style: styles, target: privateTarget }); i.value = ''; } 
     }
     function toggleEmojiPanel(e) { e.stopPropagation(); const p = document.getElementById('emoji-panel'); p.style.display = (p.style.display === 'flex') ? 'none' : 'flex'; }
 </script>
