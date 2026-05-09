@@ -21,12 +21,16 @@
         #fixed-admin { padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; margin-bottom: 15px; text-align: center; }
         #admin-display-name { font-weight: bold; font-size: 15px; }
         .user-item { display: flex; align-items: center; padding: 6px 10px; border-bottom: 1px solid #222; gap: 8px; transition: 0.2s; cursor: pointer; }
-        .user-item.selected { background: rgba(255, 255, 255, 0.15) !important; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; }
+        .user-item.selected { background: rgba(255, 255, 255, 0.2) !important; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 4px; }
         .status-box { width: 18px; height: 18px; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 2px; }
         .status-0 { background: #222; } .status-1 { background: #3498db; } .status-2 { background: #e74c3c; }
         #emoji-panel { display: none; position: absolute; bottom: 65px; left: 12px; background: #2a2a2a; border: 2px solid #555; padding: 10px; flex-wrap: wrap; gap: 10px; width: 280px; z-index: 2000; border-radius: 5px; }
         #input { flex: 1; background: #000; color: #fff; border: 1px solid #555; padding: 10px; outline: none; }
         #ban-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; flex-direction: column; justify-content: center; align-items: center; color: #ff4757; }
+        
+        /* Renk Yazısı Buton Stili */
+        .color-trigger { font-size: 11px; color: #fff; cursor: pointer; font-weight: bold; padding: 5px 8px; border: 1px solid #555; border-radius: 3px; background: #333; }
+        .color-trigger:hover { background: #444; }
     </style>
 </head>
 <body>
@@ -51,7 +55,12 @@
             <button id="btn-italic" class="f-btn" onclick="toggleStyle('italic')"><i>I</i></button>
             <button id="btn-underline" class="f-btn" onclick="toggleStyle('underline')"><u>U</u></button>
         </div>
-        <div class="tool-group"><input type="color" id="colorPicker" value="#ff4757" onchange="handleColorChange(this.value)" style="width:25px; height:20px; border:none; background:none; cursor:pointer;"></div>
+        
+        <div class="tool-group">
+            <div class="color-trigger" onclick="document.getElementById('colorPicker').click()">Renk</div>
+            <input type="color" id="colorPicker" value="#2ecc71" onchange="handleColorChange(this.value)" style="display:none;">
+        </div>
+
         <div class="tool-group" id="admin-tools" style="display:none;">
             <button class="f-btn" style="color:#f1c40f;" onclick="clearChat()">🧹 Temizle</button>
             <button class="f-btn" style="color:#3498db;" onclick="document.getElementById('bg-upload').click()">🖼️ Resim</button>
@@ -111,7 +120,11 @@
     socket.on('login success', d => { 
         myNick = d.nick; myRole = d.role; 
         document.getElementById('login-overlay').style.display = 'none'; 
-        if(myRole === 'Yönetici') { document.getElementById('admin-tools').style.display = 'flex'; selectedColor = "#ff4757"; }
+        if(myRole === 'Yönetici') { 
+            document.getElementById('admin-tools').style.display = 'flex'; 
+            selectedColor = "#ff4757"; 
+            document.getElementById('colorPicker').value = "#ff4757";
+        }
     });
 
     socket.on('chat cleared', () => { document.getElementById('messages').innerHTML = '<div style="text-align:center; color:#f1c40f; padding:10px;">✨ Temizlendi ✨</div>'; });
@@ -142,7 +155,7 @@
             item.onclick = () => {
                 if(myRole === 'Yönetici') {
                     privateTarget = (privateTarget === u.nick) ? null : u.nick;
-                    document.getElementById('input').placeholder = privateTarget ? u.nick + " özel fısıltı..." : "Mesaj yaz...";
+                    document.getElementById('input').placeholder = privateTarget ? u.nick + " özel mesaj..." : "Mesaj yaz...";
                     socket.emit('refresh list'); 
                 }
             };
@@ -157,13 +170,22 @@
                 };
             }
 
-            const name = document.createElement('span'); name.style.color = u.color; name.style.fontWeight = "bold"; name.innerText = u.nick;
+            const name = document.createElement('span'); 
+            name.style.color = u.color; 
+            name.style.fontWeight = "bold"; 
+            name.innerText = u.nick;
+            
             item.appendChild(box); item.appendChild(name); uDiv.appendChild(item);
         });
     });
 
     socket.on('background changed', url => { document.getElementById('messages').style.backgroundImage = `url('${url}')`; });
-    function handleColorChange(c) { selectedColor = c; socket.emit('update color', c); }
+    
+    function handleColorChange(c) { 
+        selectedColor = c; 
+        socket.emit('update color', c); 
+    }
+
     function changeFontSize(n) { currentFontSize += n; document.getElementById('messages').style.fontSize = currentFontSize + "px"; }
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
