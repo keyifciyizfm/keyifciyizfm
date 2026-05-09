@@ -13,7 +13,7 @@ let users = {};
 let userStatus = {}; 
 let currentBackground = ""; 
 let adminCount = 0; 
-let shutdownTimer = null; 
+let shutdownTimer = null; // 60 saniye kuralı için değişken
 
 const masterNick = "Keyifciyiz_Fm";
 const masterPass = "123456";
@@ -35,12 +35,25 @@ function parseEmojis(text) {
 io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const isTargetAdmin = (data.nick === masterNick);
-        if (adminCount === 0 && !isTargetAdmin) return socket.emit('auth error', 'Yayıncı şu an yayında değil!');
-        if (isTargetAdmin && data.password !== masterPass) return socket.emit('auth error', 'Hatalı Şifre!');
+        
+        // KRİTİK: Yönetici devretme/bekleme süresi içindeysek dinleyici girebilir
+        // Ancak süre dolmuşsa veya hiç yönetici girmemişse engel olur
+        if (adminCount === 0 && !isTargetAdmin && !shutdownTimer) {
+            return socket.emit('auth error', 'Yayıncı şu an yayında değil!');
+        }
+        
+        if (isTargetAdmin && data.password !== masterPass) {
+            return socket.emit('auth error', 'Hatalı Şifre!');
+        }
         
         if (isTargetAdmin) {
             adminCount++;
-            if (shutdownTimer) { clearTimeout(shutdownTimer); shutdownTimer = null; }
+            // YÖNETİCİ GELDİ: Varsa geri sayımı durdur
+            if (shutdownTimer) { 
+                clearTimeout(shutdownTimer); 
+                shutdownTimer = null; 
+                console.log("Yönetici devraldı, kapanma iptal edildi.");
+            }
         }
         
         socket.nick = data.nick;
@@ -103,7 +116,6 @@ io.on('connection', (socket) => {
         if (socket.role !== 'Yönetici') return;
         const oldStatus = userStatus[data.target];
         userStatus[data.target] = data.state;
-        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
                 users[id].status = data.state;
@@ -125,7 +137,18 @@ io.on('connection', (socket) => {
         if (users[socket.id]) {
             if (users[socket.id].role === 'Yönetici') {
                 adminCount--;
-                if (adminCount <= 0) shutdownTimer = setTimeout(() => { io.emit('force logout'); users = {}; adminCount = 0; }, 60000);
+                // 60 SANİYE KURALI BURADA (Yönetici çıkınca başlar)
+                if (adminCount <= 0) {
+                    console.log("Son yönetici ayrıldı. 60 saniyelik devretme süresi başladı.");
+                    shutdownTimer = setTimeout(() => { 
+                        io.emit('force logout'); 
+                        users = {}; 
+                        adminCount = 0; 
+                        currentBackground = "";
+                        shutdownTimer = null;
+                        console.log("Süre doldu, oda kapatıldı.");
+                    }, 60000);
+                }
             }
             delete users[socket.id];
             io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
