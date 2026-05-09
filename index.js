@@ -61,7 +61,7 @@ io.on('connection', (socket) => {
         if (!u) return;
 
         const currentStatus = userStatus[u.nick] || 0;
-        if (currentStatus === 2) return; // Engelli ise mesajı tamamen engelle
+        if (currentStatus === 2) return;
 
         const msgData = { 
             user: u.nick, 
@@ -71,25 +71,28 @@ io.on('connection', (socket) => {
             target: data.target 
         };
 
-        // Özel Mesaj (Sadece Yönetici ise)
+        // ÖZEL MESAJ (YÖNETİCİ MODU)
         if (data.target && u.role === 'Yönetici') {
             const targetSocket = Object.values(users).find(usr => usr.nick === data.target);
             if (targetSocket) {
-                socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.target})` });
-                io.to(targetSocket.id).emit('chat message', { ...msgData, user: `(Özel) ${u.nick}`, color: "#ffffff" });
+                socket.emit('chat message', msgData); 
+                io.to(targetSocket.id).emit('chat message', msgData);
             }
             return;
         }
 
-        // Genel Mesaj + Susturma Kontrolü
+        // SUSTURULAN KULLANICI MANTIĞI
         if (currentStatus === 1) {
+            // Sadece kendisine gönder
             socket.emit('chat message', msgData);
+            // Sadece yöneticiye "(Susturuldu)" notuyla gönder
             Object.values(users).forEach(usr => { 
                 if (usr.role === 'Yönetici' && usr.id !== socket.id) {
                     io.to(usr.id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
                 }
             });
         } else {
+            // Normal kullanıcı mesajı herkese gider
             io.emit('chat message', msgData);
         }
     });
@@ -97,9 +100,14 @@ io.on('connection', (socket) => {
     socket.on('update status', (data) => {
         if (socket.role !== 'Yönetici') return;
         userStatus[data.target] = data.state;
+        
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
                 users[id].status = data.state;
+                // Sadece susturulan kişiye özel uyarı gönder
+                if (data.state === 1) {
+                    io.to(id).emit('chat message', { user: "BİLGİ", text: "⚠️ Susturuldunuz! Mesajlarınız sadece yöneticiye iletilir.", color: "#f1c40f", style: { bold: true } });
+                }
                 io.to(id).emit('status update', data.state);
             }
         });
