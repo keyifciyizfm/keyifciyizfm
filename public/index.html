@@ -142,7 +142,7 @@
             item.onclick = () => {
                 if(myRole === 'Yönetici') {
                     privateTarget = (privateTarget === u.nick) ? null : u.nick;
-                    document.getElementById('input').placeholder = privateTarget ? u.nick + " özel..." : "Mesaj yaz...";
+                    document.getElementById('input').placeholder = privateTarget ? u.nick + " özel fısıltı..." : "Mesaj yaz...";
                     socket.emit('refresh list'); 
                 }
             };
@@ -168,11 +168,17 @@
     function toggleStyle(t) { styles[t] = !styles[t]; document.getElementById('btn-'+t).classList.toggle('active'); }
     function clearChat() { if(confirm("Temizlensin mi?")) socket.emit('clear chat'); }
     function uploadBg(input) { if (input.files && input.files[0]) { const reader = new FileReader(); reader.onload = (e) => socket.emit('change background', e.target.result); reader.readAsDataURL(input.files[0]); } }
+    
     function sendMessage(e) { 
         e.preventDefault(); 
         const i = document.getElementById('input'); 
         if(i.value) { 
-            socket.emit('chat message', { text: i.value, color: selectedColor, style: styles, target: privateTarget }); 
+            socket.emit('chat message', { 
+                text: i.value, 
+                color: selectedColor, 
+                style: styles, 
+                target: privateTarget 
+            }); 
             i.value = ''; 
         } 
     }
