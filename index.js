@@ -58,7 +58,10 @@ io.on('connection', (socket) => {
 
     socket.on('chat message', (data) => {
         const u = users[socket.id];
-        if (!u || userStatus[u.nick] === 2) return;
+        if (!u) return;
+
+        const currentStatus = userStatus[u.nick] || 0;
+        if (currentStatus === 2) return; // Engelli ise mesajı tamamen engelle
 
         const msgData = { 
             user: u.nick, 
@@ -68,19 +71,26 @@ io.on('connection', (socket) => {
             target: data.target 
         };
 
+        // Özel Mesaj (Sadece Yönetici ise)
         if (data.target && u.role === 'Yönetici') {
             const targetSocket = Object.values(users).find(usr => usr.nick === data.target);
             if (targetSocket) {
                 socket.emit('chat message', { ...msgData, user: `(Özel -> ${data.target})` });
                 io.to(targetSocket.id).emit('chat message', { ...msgData, user: `(Özel) ${u.nick}`, color: "#ffffff" });
             }
+            return;
+        }
+
+        // Genel Mesaj + Susturma Kontrolü
+        if (currentStatus === 1) {
+            socket.emit('chat message', msgData);
+            Object.values(users).forEach(usr => { 
+                if (usr.role === 'Yönetici' && usr.id !== socket.id) {
+                    io.to(usr.id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
+                }
+            });
         } else {
-            if (userStatus[u.nick] === 1) {
-                socket.emit('chat message', msgData);
-                Object.values(users).forEach(usr => { 
-                    if (usr.role === 'Yönetici' && usr.id !== socket.id) io.to(usr.id).emit('chat message', { ...msgData, user: u.nick + " (Susturuldu)" });
-                });
-            } else { io.emit('chat message', msgData); }
+            io.emit('chat message', msgData);
         }
     });
 
@@ -89,9 +99,14 @@ io.on('connection', (socket) => {
         userStatus[data.target] = data.state;
         Object.keys(users).forEach(id => {
             if (users[id].nick === data.target) {
+                users[id].status = data.state;
                 io.to(id).emit('status update', data.state);
             }
         });
+        io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
+    });
+
+    socket.on('refresh list', () => {
         io.emit('user list', { list: Object.values(users), adminOnline: (adminCount > 0) });
     });
 
@@ -112,4 +127,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server 3000 portunda hazır.'));
+server.listen(3000);
